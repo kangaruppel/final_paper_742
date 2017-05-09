@@ -1,0 +1,62 @@
+Basic Description of how to convert single-threaded code to multithreaded code 
+
+Did implement thread specific channel naming so code could be reused- would simply need
+another function to grab current thread every time a new CH_OUT happened.... not actually
+implemented but the proof of concept is there.
+
+1. Use the following command to replace all TRANSITION_TO calls with TRANSITION_TO_MT
+
+:%s/TRANSITION_TO/TRANSITION_TO_MT/gc
+
+and give permission for all of the changes
+
+2. Check the code for any naked transition_to function calls and replace with
+transition_to_mt. 
+
+:%s/transition_to/transition_to_mt/gc
+
+and give permission for all of the changes. 
+
+3. If merging together more than one app, merge the init functions 
+  -this means making sure the new init function is a union of the functionality of the
+separate files
+  -Once combined, the extraneous init function needs to be deleted. 
+  -Delete the line at the bottom of the file that establishes this extra function as the
+init function. 
+
+4. Merge the task_init functions
+  -There are different ways to do this, but it'll probably be easier and require the
+fewest name changes if you just copy and paste from one task_init into the other and
+delete the old one.
+  -Delete the line at the bottom of the file that establishes this extra function as the
+entry task 
+
+5. Call thread_create(<name of starting task of new thread>)
+
+6. Add thread_end() call if necessary
+
+7. Renumber all of the tasks in one of the files. I know, this sucks, but you don't want
+the numbers conflicting (granted, the jury is still out on whether this is strictly
+necessary, but so it goes!). For now, play it safe and skip 5 as well... 
+
+8. Make sure there aren't any function redefinitions as a result of tossing both files
+into the same C program... particularly if they're from the same code base already. 
+
+9. Make sure none of the task names conflict (other than task_init which we already took
+care of)
+
+10. Merge the dependencies and the object file list into a single makefile... this is more
+of a pain if you're porting from an old format, but still shouldn't take too long. Oh, and
+per convention (albeit a new convention), name the executable <primary>_<secondary> where
+primary is the c file with task_init
+
+11. This really should be just about number 1, but add the following line to your
+task_init!! Otherwise you'll just get junk out of the scheduler 
+
+thread_init(); 
+
+12. Increase the macro value for MAX_DIRTY_SELF_FIELDS to whatever you need. The
+multithreaded version of chain will have it set to 64, but more fields may be required if
+there's a huge data structure getting double buffered, likewise you may want it smaller to
+more efficiently use the available memory.  
+
