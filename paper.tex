@@ -29,7 +29,7 @@
 %    \email{bob@example.se}
 %}
 
-\title{Chains on Threads on Tasks on Channels....}
+\title{TAPIR: Threaded Application Programming on Intermittant Resources}
 
 \begin{document}
 
@@ -42,8 +42,12 @@ Killer abstract.
 
 \section{Introduction/Background}
   \label{sec:intro}
-Intro stuff about intermittence that Brandon already knows but we should record for the
-heck of it. Here's a sample citation for totally unrelated things~\cite{RC,Grace}!
+  Chain, DINO\\
+  Multithreading\\
+  Intermittance Review\\
+  RMW\\
+  Example Citation\cite{RC,Grace}!
+
 
 %Sample of adding a picture across the top of a split page...
 \begin{figure*}
@@ -61,12 +65,50 @@ heck of it. Here's a sample citation for totally unrelated things~\cite{RC,Grace
 More text after the picture to show how that looks...
 
 
+\section{Related Work}
+Operating system work\\
+TU delft guys...\\
+Energy Align\\
+
+
+\section{Chain Discussion}
+Arrays in channels and why that's bad\\
+MAX\_NUM\_DIRTY\_FIELDS\\
+Explioting the fact that there isn't a compiler\\
+
+
+\section{What we did} % TODO change title
+Scheduler\\
+Interrupts\\
+Mutexes\\
+User programming model for threads\\
+Interrupts\\
+Round Robin (alternatives, on reboot)\\
+SIMD vs MIMD\\
+SIMD w/ channels (you don't get your own registers...etc -
+    just channels, since intermittant)\\
+
+
 \section{Implementation}
 We only had to break \chain a little. We promise!
+Scheduler Data structures and idempotence (what we broke and why we broke it)\\
+Mutexes (Simple, meant for pseudo channels)\\
+Interrupts (mucked with IE flags)\\
 
 
 \section{Results}
 No really, there will be things here!
+Applications/measurements\\
+Blinker (x2)\\
+RSA+cukoo\\
+No verification\\
+Memory overhead (read off compiliation)\\
+Performance (\# reboots)\\
+
+
+\section{Future Work}
+Duplicating channels (a little renaming or sharing arrays with mutexes)\\
+Optimizations to reduce overhead\\
 
 
 \section{Conclusion}
