@@ -4,7 +4,7 @@ OS := $(shell uname)
 all: compile
 ifeq ($(OS),Linux)
 	evince $(DOC).pdf
-else if ($(OS),CYGWIN_NT-10.0)
+else ifeq ($(OS),CYGWIN_NT-10.0)
 	cygstart $(DOC).pdf
 else
 	open $(DOC).pdf
