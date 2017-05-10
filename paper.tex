@@ -231,7 +231,7 @@ many are to be running simulateously. A register allocation graph coloring schem
 In either case the current channel naming scheme must be changed to support channel duplication, ether real or simulated.
 Currently channels are allocated and named at compile time by combining the names of the input and output channel tasks. 
 However, if tasks can be duplicated this naming scheme must be altered to support multiple channels of the same name and potentially multiple channels of the same name.
-This can be done with a vector clock timestamp or a simple counter stored in nonvolatile memory to create unique channel names.\\
+This can be done with a vector clock timestamp or a simple counter stored in nonvolatile memory to create unique channel names.
 
 Additionally, it is possible to save memory by sharing arrays between tasks without the necessity of copying the array in its entirety in each channel.
 To do this the concept of interrmittent tasks mutexes for shared resources and data structures would be introduced.
@@ -243,11 +243,12 @@ shared data structures while still maintaining correctness.
 Because channel sizes are constrained at compile time currently, it is also necessary to know at compile time all data structures, shared or private, 
 that are going to be used during execution of a chain program or programs. 
 It is a challenge for future work in this field to constrain memory for channels at compile time and for the compiler to know with certainty how much memory 
-is necessary to allocate. Depending on the workload, the amount of forked threads would need to be constrained such that threads don't overflow nonvolatile memory at runtime.\\
+is necessary to allocate. Depending on the workload, the amount of forked threads would need to be constrained such that threads don't overflow nonvolatile memory at runtime.
 
 Future work also includes optimizations to reduce overhead, such as converting the free indices array to a free indices bitmap in order to reduce the amount of 
 baseline memory that the scheduler task uses. 
-Re-assignation and re-use of channels at runtime would increaes overhead, but it is thought that the memory saved by this procedure is worth the trade-off of increased overhead. If re-assignation can be determined at compile-time, the overhead during runtime will still remain low.\\
+Re-assignation and re-use of channels at runtime would increaes overhead, but it is thought that the memory saved by this procedure is worth the trade-off of increased overhead.
+If re-assignation can be determined at compile-time, the overhead during runtime will still remain low.
 
 \section{Conclusion}
 Multithreading in intermittence {\em is} a good idea!
