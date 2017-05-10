@@ -42,9 +42,9 @@ Killer abstract.
 
 \section{Introduction/Background}
   \label{sec:intro}
-  Chain, DINO\\
-  Multithreading\\
-  Intermittance Review\\
+  Chain, DINO <-- THIS ME\\
+  Multithreading <-- THIS ME\\
+  Intermittance Review <-- THIS ME\\
   RMW\\
   Example Citation\cite{RC,Grace}!
 
@@ -109,7 +109,15 @@ Performance (\# reboots)\\
 \section{Future Work}
 Duplicating channels (a little renaming or sharing arrays with mutexes)\\
 Optimizations to reduce overhead\\
-
+\\
+Automatically renaming channels to reuse task code\\
+-challenging to define sharing between threads\\
+-challenging to constrain memory for channels (not that much of it, also compilation)\\
+-challenge to uniquely identify multiple channel instances of the same task\\
+\\
+Optimizations to reduce overhead\\
+-convert free indices array to bitmap\\
+-compile-time re-assignation of re-used channels\\
 
 \section{Conclusion}
 Multithreading in intermittence {\em is} a good idea!
