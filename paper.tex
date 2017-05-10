@@ -51,17 +51,18 @@ Killer abstract.
 
 
 %Sample of adding a picture across the top of a split page...
-\begin{figure*}
-\centering
-\begin{minipage}[b]{0.49\textwidth}
-  \includegraphics[width=0.95\textwidth,center]{capybara-all.png}
-\caption{Capybara power system overview}\label{label-a}
-\end{minipage}\hfill
-\begin{minipage}[b]{0.49\textwidth}
-  \includegraphics[width=0.95\textwidth,center]{power_modes.pdf}
-\caption{Effect of different power modes}\label{label-b}
-\end{minipage}
-\end{figure*}
+
+%\begin{figure*}
+%\centering
+%\begin{minipage}[b]{0.49\textwidth}
+%  \includegraphics[width=0.95\textwidth,center]{capybara-all.png}
+%\caption{Capybara power system overview}\label{label-a}
+%\end{minipage}\hfill
+%\begin{minipage}[b]{0.49\textwidth}
+%  \includegraphics[width=0.95\textwidth,center]{power_modes.pdf}
+%\caption{Effect of different power modes}\label{label-b}
+%\end{minipage}
+%\end{figure*}
 
 More text after the picture to show how that looks...
 
@@ -72,11 +73,41 @@ TU delft guys...\\
 Energy Align\\
 
 
-\section{Chain Discussion} -NEIL
+\section{Chain Discussion}
+\chain, while providing a reasonable interface for programmers to work within,
+has several inefficiencies that give poor performance on certain applications.
+First, there is no notion of data sharing between tasks - all communication is
+strictly done through channels. This is useful, as the programmer never needs
+to reason about idempotence with respect to their data, but all data that needs
+to be transferred between tasks needs to be housed in a channel. Since, under
+the original constraints of \chain, channels cannot be written or read from by
+tasks that do not own the channel - only tasks that own the channel can access
+the data within. This means that large data structures, arrays for instance,
+that need to be shared between several channels must be unnecessarily
+duplicated in non-volatile memory - one copy of the data structure for each
+channel that it needs to be accessed in. Granted, there is no enforcement of
+channel ownership by the compiler, but the programmer risks idempotence
+violations by straying outside the constraints of chain. We exploit this to
+create an equivalent to the multicast-in and multicast-out channels described
+in \chain, but using them requires much more reasoning on the part of the programmer.
 
-Arrays in channels and why that's bad\\
-MAX\_NUM\_DIRTY\_FIELDS\\
-Exploiting the fact that there isn't a compiler\\
+
+Additionally, since dynamic memory allocation is arguably too expensive to run
+on intermittently powered systems, memory is allocated at compile time.
+Unfortunately, since there isn't a compiler specifically for \chain, arrays
+are statically sized based on \texttt{\#define} parameters. This can be
+create tricky memory corruption errors for the programmer when out-of-bounds
+array accesses occur because, for instance, a self-channel has more dirty
+fields than \texttt{MAX\_NUM\_DIRTY\_FIELDS}.
+
+
+Future work for \chain needs to include some sort of memory allocation based on
+the set of channels allocated in the program, but this is work for a compiler
+and beyond the scope of this work. For our purposes of threaded applications,
+however, \chain is a sufficient launching pad, despite its misgivings since it
+does not require specialized hardware or energy subsystems to work effectively,
+and since it solves the issue of idempotent data accesses in a way that is
+abstracted from the programmer.
 
 
 \section{What we did} % TODO change title
@@ -161,7 +192,6 @@ approach fails if interrupt handlers take longer than the capacitor has
 energy for. This bug handlers not completing due to power failure is
 unintuitive for programmers coming from consistently powered devices and
 makes certain devices unusable under intermittent power.\\
-
 With interrupt handlers as tasks, if a power failure occurs during a
 handler, execution will resume at the handler. This isn't ideal, the
 standard paradigm that interrupt handlers are generally short and fast
@@ -170,7 +200,8 @@ being missed because processing the interrupt took longer than the
 timer period), but we argue that it is more unreasonable to say
 that interrupt handlers that take too long will not complete than
 to violate the standard paradigm, since the former arbitrarily restricts
-the application domain.\\
+the application domain.
+
 
 For the sake of simplicity, we assume that interrupt handlers are not
 reentrant. Since reentrant handlers can be used in a non-reentrant fashion
@@ -179,7 +210,8 @@ Moreover, the benefit to reentrant handlers, the application will not miss an
 interrupt firing because processing the previous one took too long, is
 secondary on intermittent architectures - there is likely a higher chance that
 a power failure will occur than an interrupt handler causing an interrupt to be
-missed, unless interrupts are firing on an extremely fine granularity.\\
+missed, unless interrupts are firing on an extremely fine granularity.
+
 
 When an interrupt handler has completed, the programmer calls
 \texttt{return\_from\_interrupt()}, which returns execution to the start
@@ -199,9 +231,7 @@ trivial for the register set, but difficult and potentially extremely costly to
 store the stack, as execution could be several functions deep. Even determining
 how much stack to save could be prohibitively costly. Another alternative would
 be to store program state in non-volatile, but this has been shown to be
-prohibitively costly in most applications \cite{Aware}. \\
-
-Interrupts - NEIL\\
+prohibitively costly in most applications \cite{Aware}.
 
 
 \section{Implementation}
