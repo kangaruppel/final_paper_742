@@ -689,7 +689,21 @@ re-assignation can be determined at compile-time, the overhead during runtime
 will still remain low.
 
 \section{Conclusion}
-Multithreading in intermittence {\em is} a good idea!
+The increased prevalence of IoT devices necessitates an increased ability to 
+run larger, general purpose applications on devices with smaller memory and
+energy footprints. With the increased research on intermittently powered devices
+for use in the embedded sphere, it is a logical next step to explore the use 
+of general purpose threaded code on an intermittent device. We have shown
+through the design and implementation of TAPIR on top of the Chain intermittent
+programming model that adding functionality for multiprogramming with
+multithreaded applications can have a low enough memory and power overhead to be
+considered useful on such a device. Additionally, we have implemented a safe
+locking structure for use in nonvolatile memory for such applications that 
+maintains RMW restrictions in the intermittent execution model and allows
+for larger shared data structures without the overhead of memory duplication
+that may overcrowd a small device. We have shown with this design that threaded
+applications can be programmed in a familiar way to software designers and that
+it is a viable next step in intermittent device research.
 
 \begin{figure}[ht]
   \centering
