@@ -7,6 +7,7 @@
 \usepackage{balance}
 \usepackage{comment}
 \usepackage{listings}
+\usepackage{url}
 \usepackage{xspace}
 \usepackage[export]{adjustbox}
 \usepackage{wrapfig}
@@ -79,71 +80,82 @@ Killer abstract.
 
 \section{Introduction/Background}
   \label{sec:intro}
-%A/N: I don't think that the paragraphs in this section are in a great order, but I am having a hard time making it flow better.
-%Also I'm absolutely sure each of these paragraphs can definitely be bulked up more for length. Please help thank you!!!
+%A/N: I don't think that the paragraphs in this section are in a great order,
+%but I am having a hard time making it flow better.  Also I'm absolutely sure
+%each of these paragraphs can definitely be bulked up more for length. Please
+%help thank you!!!
 
-The increase in popularity of Internet of Things (IoT) has led to research focus in wireless technologies and low-power computing.
-New technologies in both of these areas has led to new
-\textit{energy-harvesting computing devices} that operates only with power it has
-collected from the surrounding environment \cite{Chain}. These devices have use cases in medical, IoT, and research applications.
+The increase in popularity of Internet of Things (IoT) has led to research focus
+in wireless technologies and low-power computing.  New technologies in both of
+these areas has led to new \textit{energy-harvesting computing devices} that
+operates only with power it has collected from the surrounding environment
+\cite{Chain}. These devices have use cases in medical, IoT, and research
+applications.
 
-Commonly, an energy-harvesting devices charges and collects power in a storage capacitor until the capacitor reaches a sufficient level of charge.
-Once the capacitor is charged, the device begins its operation phase and will run until the capacitor is drained.
-This leads to the \textit{intermittent execution model} where regular shut downs and reboots to recharge are the common case rather than the rare case in
-a traditional execution model. Because the intermittent execution model includes power failures and reboots, continuous execution programs behave
-irregular behavior on an intermittent device and a new programming model is needed.
+Commonly, an energy-harvesting devices charges and collects power in a storage
+capacitor until the capacitor reaches a sufficient level of charge.  Once the
+capacitor is charged, the device begins its operation phase and will run until
+the capacitor is drained.  This leads to the \textit{intermittent execution
+model} where regular shut downs and reboots to recharge are the common case
+rather than the rare case in a traditional execution model. Because the
+intermittent execution model includes power failures and reboots, continuous
+execution programs behave irregular behavior on an intermittent device and a new
+programming model is needed.
 
-Our multithreaded model is build on two existing programming models, DINO and Chain.
-An initial intermittent programming model DINO breaks intermittent programs into tasks, which creates automatic checkpointing locations
-during exeuction \cite{Dino}. DINO uses a checkpointing and recovery model that tracks both volatile and nonvolatile memory.
-The DINO execution model executes all tasks transactionally, leading to atomic task semantics and does not permit consistency violations in
-nonvolatile state \cite{Dino}. Chain, a more recent iteration of the concepts in DINO, uses volatile state rarely, if ever, and uses task boundaries
-called channels to store most used data in nonvolatile memory \cite{Chain}. At compile time, Chain allocates the necessary channels between tasks
-by parsing channel read and write statements in order to match up aligning tasks. All inputs and outputs to each task, as well as necessary data
-structures, are stored in a channel for a respective task. A channel may only be modified by one task, and only one task may run at a time,
-which mitigates time of check, time of use bugs (TOCTOU) in intermittence.
-The one exception is a self-channel for recursive code, which is double buffered.
-Keeping all modifiable data in nonvolatile memory that is not open to easy rewrite makes these tasks idempotent across reboots.
-Because of continuous reboots, many operations necessarily will be executed more than once,
-and correctness is compromised if those operations are not guaranteed to have the same outcome by the programming model after each reboot.
+Our multithreaded model is build on two existing programming models, DINO and
+Chain.  An initial intermittent programming model DINO breaks intermittent
+programs into tasks, which creates automatic checkpointing locations during
+exeuction \cite{Dino}. DINO uses a checkpointing and recovery model that tracks
+both volatile and nonvolatile memory.  The DINO execution model executes all
+tasks transactionally, leading to atomic task semantics and does not permit
+consistency violations in nonvolatile state \cite{Dino}. Chain, a more recent
+iteration of the concepts in DINO, uses volatile state rarely, if ever, and uses
+task boundaries called channels to store most used data in nonvolatile memory
+\cite{Chain}. At compile time, Chain allocates the necessary channels between
+tasks by parsing channel read and write statements in order to match up aligning
+tasks. All inputs and outputs to each task, as well as necessary data
+structures, are stored in a channel for a respective task. A channel may only be
+modified by one task, and only one task may run at a time, which mitigates time
+of check, time of use bugs (TOCTOU) in intermittence.  The one exception is a
+self-channel for recursive code, which is double buffered.  Keeping all
+modifiable data in nonvolatile memory that is not open to easy rewrite makes
+these tasks idempotent across reboots.  Because of continuous reboots, many
+operations necessarily will be executed more than once, and correctness is
+compromised if those operations are not guaranteed to have the same outcome by
+the programming model after each reboot.
 
-A main issue in intermittent computing along with idempotence is the Read-Modify-Write (RMW) problem.
-Because volatile memory is cleared on each reboot, it is possible that in between reading and modifying or modifying and writing the data had changed,
-leading to incorrect answers and an inconsistent state. In the Chain programming model, this problem is solved by creating a new task to house the
-problematic operations. Because tasks are blocked by channels that can only be written by one task and are saved to nonvolatile memory, RMW is avoided.
-However, in multiprogramming the problem manifests in another way; if the scheduler switches tasks on a reboot, the currently running thread could have
-been in the middle of its critical section, making it difficult for other threads to make progress if context switches always occur after a reboot.
-Because of this we have decided on a round-robin scheduler with context switches at the end of a task, to guarantee forward progress while knowing
-which tasks have run to completion.
+A main issue in intermittent computing along with idempotence is the
+Read-Modify-Write (RMW) problem.  Because volatile memory is cleared on each
+reboot, it is possible that in between reading and modifying or modifying and
+writing the data had changed, leading to incorrect answers and an inconsistent
+state. In the Chain programming model, this problem is solved by creating a new
+task to house the problematic operations. Because tasks are blocked by channels
+that can only be written by one task and are saved to nonvolatile memory, RMW is
+avoided.  However, in multiprogramming the problem manifests in another way; if
+the scheduler switches tasks on a reboot, the currently running thread could
+have been in the middle of its critical section, making it difficult for other
+threads to make progress if context switches always occur after a reboot.
+Because of this we have decided on a round-robin scheduler with context switches
+at the end of a task, to guarantee forward progress while knowing which tasks
+have run to completion.
 
-In the current Chain programming model, writing code that completes multiple objectives correctly is now difficult.
-Current chain programs are small and only have one objective. Additionally, there is no support for advanced control flow.
-Multiple control threads may exist, but in the current model there is no support for them and programmability is difficult and often incorrect.
-Supporting multiple control threads in Chain also necessitates a linear increase in a limited memory resource, because all large shared data structures
-must be copied into each necessary channel, and also makes updating the structures a time consuming, high-overhead task.
-In order to increase functionality of chain and to mitigate these shortcomings, we add familiar threading semantics to Chain in order to express
-multi-threaded control flow operation. In order to do this we create a lightweight scheduler task that becomes part of the inter-task checkpointing
-operation and provide a method of sharing large data structures between tasks with a locking feature. This method is low-memory and low-execution
-overhead, which can then maintain the Chain programming semantics at the user level still successfully complete work on an intermittent device.
+In the current Chain programming model, writing code that completes multiple
+objectives correctly is now difficult.  Current chain programs are small and
+only have one objective. Additionally, there is no support for advanced control
+flow.  Multiple control threads may exist, but in the current model there is no
+support for them and programmability is difficult and often incorrect.
+Supporting multiple control threads in Chain also necessitates a linear increase
+in a limited memory resource, because all large shared data structures must be
+copied into each necessary channel, and also makes updating the structures a
+time consuming, high-overhead task.  In order to increase functionality of chain
+and to mitigate these shortcomings, we add familiar threading semantics to Chain
+in order to express multi-threaded control flow operation. In order to do this
+we create a lightweight scheduler task that becomes part of the inter-task
+checkpointing operation and provide a method of sharing large data structures
+between tasks with a locking feature. This method is low-memory and
+low-execution overhead, which can then maintain the Chain programming semantics
+at the user level still successfully complete work on an intermittent device.
 
-%Example Citation\cite{Chain, Mementos, Aware, Dino}!
-
-
-%Sample of adding a picture across the top of a split page...
-
-%\begin{figure*}
-%\centering
-%\begin{minipage}[b]{0.49\textwidth}
-%  \includegraphics[width=0.95\textwidth,center]{capybara-all.png}
-%\caption{Capybara power system overview}\label{label-a}
-%\end{minipage}\hfill
-%\begin{minipage}[b]{0.49\textwidth}
-%  \includegraphics[width=0.95\textwidth,center]{power_modes.pdf}
-%\caption{Effect of different power modes}\label{label-b}
-%\end{minipage}
-%\end{figure*}
-
-%More text after the picture to show how that looks...
 
 
 \section{Related Work}
@@ -183,10 +195,11 @@ from single threaded execution. From a hardware standpoint, the federated energy
 peripherals. Federated energy also simplifies a programmer's reasoning about reading from
 a single peripheral. However, federating energy does not help a programmer describe how to
 handle {\em multiple} peripherals. Consider a listing in
-~\cite{ufop} reporoduced in Figure ~\ref{copy}, and imagine the level of understanding
+~\cite{ufop} reporoduced in Figure ~\ref{fig:copy}, and imagine the level of understanding
 of the hardware behavior a programmer would have to employ to, say, read one sensor if it
 is available but read from and proceed to process data from a different sensor if it is not.
 
+% Doesn't compile, commenting out
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.99\columnwidth]{figs/listing}
@@ -254,10 +267,40 @@ and since it solves the issue of idempotent data accesses in a way that is
 abstracted from the programmer.
 
 
-\section{What we did} % TODO change title
+\section{System Implementation } % TODO change title
 Mutexes - Emily\\
-Round Robin (alternatives, on reboot)\\
-SIMD vs MIMD\\
+
+TAPIR has a round robin scheduling algorithm. At the end of a task, the compiler
+inserts a jump back to the scheduler task, where the next task in the list is
+the one to be executed. An alternate scheduling model that was considered was
+a context switch on reboot instead of at the end of each task. The main drawback
+of using a reboot-based scheduler is that, because power failure is the common
+case, there is a high chance of reducing or halting forward progress altogether
+because one thread holds a lock that all of the other threads need but cannot
+complete. For that reason the design specifies end of task, so each task has
+an opportunity to use a shared resource and release any locks before a power-
+intensive context switch occurs. Additionally, a round robin scheduler was
+chosen for this design because it is simple to implement and uses only one index counter,
+very little power or memory overhead as compared to other scheduling algorithms. It is
+critical for multithreading in Chain to not add significant power and memory
+overhead in scheduling over conventional Chain so that the workload can
+make as much forward progress as possible on one charge cycle.
+
+When designing threading in Chain, the shared memory model is a main indicator
+of the threaded execution model. The two most probable options when designing
+TAPIR were a SIMD execution model of \textit{Thread Pools}, or a MIMD
+traditional multiprogramming model. The Thread Pool design makes use of task
+code duplication by explicitly forking a number of chain programs, all of which
+run simultaneously on the scheduler on arrayed data. This option is useful
+multiple data streams from I/O in embedded applications that need to be
+processed before new data overrides the I/O device. Additionally, the Thread
+Pool model makes sharing memory more regular by using multiple copies of the
+same thread. However, this option is not as general purpose. The TAPIR design
+ultimately settled on a multiprogramming model, because this allows for the
+programmer to explictly program unique chain programs with shared or discrete
+data structures on the same system. However, this execution model requires a
+more structured locking mechanism to avoid RMW during execution.
+
 SIMD w/ channels (you don't get your own registers...etc -
     just channels, since intermittent)\\
 
@@ -293,6 +336,42 @@ maintain programmability by provide the user with an interface that they
 expect, instead of trying to extend a \chain semantic like
 \texttt{TRANSITION\_TO} to also include thread creation.
 
+\subsection{Locking Primitive}
+To improve a programmer's control of shared data between threads, and to reduce
+the complexity of accessing data that may be touched by many different tasks we
+implement a simple mutex object that can be added to a channel. The mutex is
+designed to be used in a standard \texttt{channel}, not a double buffered
+\texttt{self\_channel}, so it must be able to tolerate a failure after a
+read/write operation (i.e. test and set). To achieve idempotence, we add a
+\texttt{thread\_id} to the \texttt{free} bit inside of each mutex. When
+attempting to acquire a lock, a thread checks if its thread id is equal to the
+lock holder, then it checks if the lock is free. If either condition is true,
+the thread successfully acquires the lock, otherwise the \texttt{mutex\_lock}
+function fails. Upon successfully acquiring the lock, a thread writes its id to
+the mutex's holder id, and changes the \texttt{free} bit to \texttt{status =
+held}. This scheme guarantees correctness because if a failure occurs after the
+mutex is set but before the task commits, the task will read out the id of the
+mutex holder before checking if it is free. Upon matchint its id with the holder
+id, the task will proceed regardless of the fact that \texttt{status = held}.
+%Maybe add a figure here to make the sequence of read/write/failure clearer...
+Further, a task must finsih executing before switching to another thread, so
+there is no possiblity for an external thread to see a value that was not
+committed by another task.
+
+It is important to note that the mutex object can be modified idempotently, but
+accesses to the data in the same channel as the mutex must adhere to channel
+exclusion. In our example application, the mutex is contained within a user
+defined \texttt{shared\_channel} structure that is analogous to a
+\texttt{multicast\_channel} but abandons the naming convention that "restricts"
+the channel to a static subset of tasks. Any task may read {\em or} or write to
+the \texttt{shared\_channel}, but performing both would break correctness. In
+the future, a compiler could be used to guarantee that a
+\texttt{shared\_channel} is not read and written by the same task, but at
+present we believe that the \texttt{mutex} and \texttt{shared\_channel}
+interface is easier for programmers to use than \texttt{multicast\_channels}, or
+a sepcialized double buffered channel when passing data between threads. It
+maintains familiar semantics for programmers and does not incur the memory
+overhead of double buffering.
 
 \subsection{Interrupts}
 \subsubsection{Motivation}
@@ -491,49 +570,115 @@ zero, so as long as the rest of the operations in the task are idempotent, so
 will \texttt{thread\_create} calls - the same locations in \texttt{theads[]}
 will be overwritten.
 
+% TODO picture of array?
 
 Mutexes (Simple, meant for pseudo channels) - Emily\\
 Interrupts (mucked with IE flags) - Neil\\
 % Interrupt prologue
 % Interrupt setup
+%\section{Implementation}
+%Scheduler Data structures and idempotence (what we broke and why) -NEIL\\
+%Mutexes (Simple, meant for pseudo channels) - Emily\\
+%Interrupts (mucked with IE flags) - Neil\\
+%% Interrupt prologue
+%% Interrupt setup
 
 
-\section{Results} - Emily
-No really, there will be things here!
-Applications/measurements\\
-Blinker (x2)\\
-RSA+cukoo\\
-No verification\\
+\section{Evaluation}
+To test our multithreading library and mutex implementation, we instrumented
+several existing Chain applications that do not share any tasks or channels to
+run concurrently. The programs were run on either an msp430fr5969 launchpad or
+on a Capybara sensing node, a custom intermittent development board with an
+msp430fr5949 MCU. Reboot tests were carried out strictly on the Capybara board
+because was simpler to guarantee the isolation of the MCU from the programming
+fet than on the launchpad. We did not seekt to fully verify our implementation
+of multi-threading, but we use our experience in application development to
+support our claim that the threads behave correctly, and as a programmer would
+expect.
+
+\subsection{Applications}
+\subsubsection{Blinker (B)}
+This application was built on top of the app-blinker-chain
+example~\cite{blinker} and modified to remove the delays and LED activations, so
+that it just passes data through three tasks until a maximum count is reached,
+and then the thread terminates. This app was primarily used to demonstrate the
+initial functionality of the system, and then to test mutexes. In both cases a
+combination of \texttt{LOG} statements and final output values were used to
+confirm the correct operation of the system.
+\subsubsection{Cuckoo-RSA (CRSA)}
+This application is a combination of a cuckoo filter that inserts and queries 64
+values a Bloom filter-like data structure~\cite{Chain}, and RSA encryption of message
+using 128-bit keys~\cite{Chain}. Unfortunately this is the only application
+combination where merging the original applications did not produce the same
+final result as running the applications separately. Several bytes at the end of
+a crucial array for RSA were always overwritten when the applications were
+merged, and we were unable to fix the problem. Unit tests running the RSA
+application in single threaded mode through our scheduler and using our
+multi-threading library produce the correct result, but any combination of RSA
+and cuckoo filtering produces the incorrect result. However, RSA does run to
+completion, so we believe the results from C-RSA are still useful.
+\subsubsection{Cuckoo-Bitcount (CB)}
+This application is a combination of the cuckoo filter described above and a
+application that uses different algorithms to count the number of bits in an
+array of integers~\cite{bitcount}. CB is a correctly working combination of two
+applications that produces the same output as separate executions of the
+unmodified versions of these applications. It expands the reliability of our
+multi-threading library beyond simple applications like Blinker.
+\subsubsection{Cuckoo-Bitcount-Blinker(CBB)}
+CBB combines the cuckoo filter and bit count applications with two threads of
+the blinker application. This results in four active threads at once, which is
+the maximum number of threads our prototype implementation allows. We confirmed
+that all four threads are fairly serviced by the round robin scheduler and they
+correctly start and end.
+
+
 Memory overhead (read off compilation)\\
 Performance (\# reboots)\\
 
 
 \section{Future Work}
-Future work is focused on saving memory by using channel and code reuse optimizations when forking new chain programs from current tasks.
-When forking a new task, a channel may be duplicated, which linearly increases the amount of memory necessary for channels with the number of currently running programs.
-It is possible to reuse channels between tasks if the number of iterations of that task are known at compile time and it can be estimated how
-many are to be running simultaneously. A register allocation graph coloring scheme can then be repurposed for reusing channels allocated at compile time.
-In either case the current channel naming scheme must be changed to support channel duplication, ether real or simulated.
-Currently channels are allocated and named at compile time by combining the names of the input and output channel tasks.
-However, if tasks can be duplicated this naming scheme must be altered to support multiple channels of the same name and potentially multiple channels of the same name.
-This can be done with a vector clock timestamp or a simple counter stored in nonvolatile memory to create unique channel names.
+Future work is focused on saving memory by using channel and code reuse
+optimizations when forking new chain programs from current tasks.  When forking
+a new task, a channel may be duplicated, which linearly increases the amount of
+memory necessary for channels with the number of currently running programs.  It
+is possible to reuse channels between tasks if the number of iterations of that
+task are known at compile time and it can be estimated how many are to be
+running simultaneously. A register allocation graph coloring scheme can then be
+repurposed for reusing channels allocated at compile time.  In either case the
+current channel naming scheme must be changed to support channel duplication,
+ether real or simulated.  Currently channels are allocated and named at compile
+time by combining the names of the input and output channel tasks.  However, if
+tasks can be duplicated this naming scheme must be altered to support multiple
+channels of the same name and potentially multiple channels of the same name.
+This can be done with a vector clock timestamp or a simple counter stored in
+nonvolatile memory to create unique channel names.
 
-Additionally, it is possible to save memory by sharing arrays between tasks without the necessity of copying the array in its entirety in each channel.
-To do this the concept of intermittent tasks mutexes for shared resources and data structures would be introduced.
-The structures are protected by a lock that contains the thread ID of the task that currently holds the lock.
-In order to allow all tasks access to a data structure without breaking all chain semantics, a modified version of a module channel would be used in order
-for multiple tasks to potentially modify one channel.
-However, even with that change it is challenging to define sharing between threads in an intermittent context and to maintain chain semantics while implementing
-shared data structures while still maintaining correctness.
-Because channel sizes are constrained at compile time currently, it is also necessary to know at compile time all data structures, shared or private,
-that are going to be used during execution of a chain program or programs.
-It is a challenge for future work in this field to constrain memory for channels at compile time and for the compiler to know with certainty how much memory
-is necessary to allocate. Depending on the workload, the amount of forked threads would need to be constrained such that threads don't overflow nonvolatile memory at runtime.
+Additionally, it is possible to save memory by sharing arrays between tasks
+without the necessity of copying the array in its entirety in each channel.  To
+do this the concept of intermittent tasks mutexes for shared resources and data
+structures would be introduced.  The structures are protected by a lock that
+contains the thread ID of the task that currently holds the lock.  In order to
+allow all tasks access to a data structure without breaking all chain semantics,
+a modified version of a module channel would be used in order for multiple tasks
+to potentially modify one channel.  However, even with that change it is
+challenging to define sharing between threads in an intermittent context and to
+maintain chain semantics while implementing shared data structures while still
+maintaining correctness.  Because channel sizes are constrained at compile time
+currently, it is also necessary to know at compile time all data structures,
+shared or private, that are going to be used during execution of a chain program
+or programs.  It is a challenge for future work in this field to constrain
+memory for channels at compile time and for the compiler to know with certainty
+how much memory is necessary to allocate. Depending on the workload, the amount
+of forked threads would need to be constrained such that threads don't overflow
+nonvolatile memory at runtime.
 
-Future work also includes optimizations to reduce overhead, such as converting the free indices array to a free indices bitmap in order to reduce the amount of
-baseline memory that the scheduler task uses.
-Re-assignation and re-use of channels at runtime would increase overhead, but it is thought that the memory saved by this procedure is worth the trade-off of increased overhead.
-If re-assignation can be determined at compile-time, the overhead during runtime will still remain low.
+Future work also includes optimizations to reduce overhead, such as converting
+the free indices array to a free indices bitmap in order to reduce the amount of
+baseline memory that the scheduler task uses.  Re-assignation and re-use of
+channels at runtime would increase overhead, but it is thought that the memory
+saved by this procedure is worth the trade-off of increased overhead.  If
+re-assignation can be determined at compile-time, the overhead during runtime
+will still remain low.
 
 \section{Conclusion}
 Multithreading in intermittence {\em is} a good idea!
