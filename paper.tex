@@ -199,7 +199,6 @@ handle {\em multiple} peripherals. Consider a listing in
 of the hardware behavior a programmer would have to employ to, say, read one sensor if it
 is available but read from and proceed to process data from a different sensor if it is not.
 
-% Doesn't compile, commenting out
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.99\columnwidth]{figs/listing}
@@ -267,7 +266,7 @@ and since it solves the issue of idempotent data accesses in a way that is
 abstracted from the programmer.
 
 
-\section{System Implementation } % TODO change title
+\section{System Implementation}
 TAPIR has a round robin scheduling algorithm. At the end of a task, the compiler
 inserts a jump back to the scheduler task, where the next task in the list is
 the one to be executed. An alternate scheduling model that was considered was
@@ -360,7 +359,7 @@ held}. This scheme guarantees correctness because if a failure occurs after the
 mutex is set but before the task commits, the task will read out the id of the
 mutex holder before checking if it is free. Upon matchint its id with the holder
 id, the task will proceed regardless of the fact that \texttt{status = held}.
-%Maybe add a figure here to make the sequence of read/write/failure clearer...
+%TODO Maybe add a figure here to make the sequence of read/write/failure clearer...
 Further, a task must finsih executing before switching to another thread, so
 there is no possiblity for an external thread to see a value that was not
 committed by another task.
