@@ -228,8 +228,38 @@ abstracted from the programmer.
 
 \section{What we did} % TODO change title
 Mutexes - Emily\\
-Round Robin (alternatives, on reboot)\\
-SIMD vs MIMD\\
+
+TAPIR has a round robin scheduling algorithm. At the end of a task, the compiler
+inserts a jump back to the scheduler task, where the next task in the list is
+the one to be executed. An alternate scheduling model that was considered was
+a context switch on reboot instead of at the end of each task. The main drawback
+of using a reboot-based scheduler is that, because power failure is the common
+case, there is a high chance of reducing or halting forward progress altogether
+because one thread holds a lock that all of the other threads need but cannot
+complete. For that reason the design specifies end of task, so each task has
+an opportunity to use a shared resource and release any locks before a power-
+intensive context switch occurs. Additionally, a round robin scheduler was 
+chosen for this design because it is simple to implement and uses only one index counter,
+very little power or memory overhead as compared to other scheduling algorithms. It is 
+critical for multithreading in Chain to not add significant power and memory
+overhead in scheduling over conventional Chain so that the workload can
+make as much forward progress as possible on one charge cycle.
+
+When designing threading in Chain, the shared memory model is a main indicator 
+of the threaded execution model. The two most probable options when designing 
+TAPIR were a SIMD execution model of \textit{Thread Pools}, or a MIMD 
+traditional multiprogramming model. The Thread Pool design makes use of task 
+code duplication by explicitly forking a number of chain programs, all of which 
+run simultaneously on the scheduler on arrayed data. This option is useful 
+multiple data streams from I/O in embedded applications that need to be 
+processed before new data overrides the I/O device. Additionally, the Thread 
+Pool model makes sharing memory more regular by using multiple copies of the 
+same thread. However, this option is not as general purpose. The TAPIR design 
+ultimately settled on a multiprogramming model, because this allows for the 
+programmer to explictly program unique chain programs with shared or discrete 
+data structures on the same system. However, this execution model requires a
+more structured locking mechanism to avoid RMW during execution. 
+
 SIMD w/ channels (you don't get your own registers...etc -
     just channels, since intermittent)\\
 
