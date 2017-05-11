@@ -242,8 +242,16 @@ programmer to explictly program unique chain programs with shared or discrete
 data structures on the same system. However, this execution model requires a
 more structured locking mechanism to avoid RMW during execution. 
 
-SIMD w/ channels (you don't get your own registers...etc -
-    just channels, since intermittent)\\
+SIMD execution on an intermittent system relies on nonvolatile memory instead
+of independent registers for each thread. In Chain's case the implementation
+would rely on channels for each thread running in the system. In the MIMD
+execution model channels could potentially be re-assigned to already allocated
+channels because the threads may end at interleaving times. However, in the
+SIMD model it is expected that each identical thread is at a comperable point
+in execution to the other running threads, and so each thread that may be
+run necessitates a new channel allocation. This could lead to an unavoidable
+hard limit on the number of threads that can run in an applicatioin which in
+turn limits potential applications that are useful on this intermittent device.
 
 
 \subsection{Scheduler}
