@@ -268,8 +268,6 @@ abstracted from the programmer.
 
 
 \section{System Implementation } % TODO change title
-Mutexes - Emily\\
-
 TAPIR has a round robin scheduling algorithm. At the end of a task, the compiler
 inserts a jump back to the scheduler task, where the next task in the list is
 the one to be executed. An alternate scheduling model that was considered was
@@ -344,6 +342,7 @@ maintain programmability by provide the user with an interface that they
 expect, instead of trying to extend a \chain semantic like
 \texttt{TRANSITION\_TO} to also include thread creation.
 
+
 \subsection{Locking Primitive}
 To improve a programmer's control of shared data between threads, and to reduce
 the complexity of accessing data that may be touched by many different tasks we
@@ -366,6 +365,7 @@ Further, a task must finsih executing before switching to another thread, so
 there is no possiblity for an external thread to see a value that was not
 committed by another task.
 
+
 It is important to note that the mutex object can be modified idempotently, but
 accesses to the data in the same channel as the mutex must adhere to channel
 exclusion. In our example application, the mutex is contained within a user
@@ -380,6 +380,7 @@ interface is easier for programmers to use than \texttt{multicast\_channels}, or
 a sepcialized double buffered channel when passing data between threads. It
 maintains familiar semantics for programmers and does not incur the memory
 overhead of double buffering.
+
 
 \subsection{Interrupts}
 \subsubsection{Motivation}
@@ -488,8 +489,8 @@ expected behavior - on continuously powered systems, execution generally
 returns to the instruction after the instruction that the system received an
 interrupt while processing. The continuous system model is intuitive, but
 breaks under \chain's intermittence. Task idempotence in \chain only works
-when execution returns to the top of a
-task upon power failure. Program state (registers and stack memory) are stored
+when execution returns to the top of a task upon power failure. Program state
+(registers and stack memory) are stored
 in volatile memory, if an interrupt handler returned to the middle of a task,
 it would be impossible to reason about program correctness, since none of the
 program state had been stored. The programmer could store program state on the
@@ -524,7 +525,7 @@ prohibitively costly in most applications \cite{Aware}.
     unsigned free_indicies[MAX_NUM_THREADS];
     unsigned free_indicies_size;
 
-    // Index of current running thread in threads[]
+    // Index of current running thread
     // Stored in self channel
     unsigned current;
 \end{lstlisting}
@@ -582,11 +583,81 @@ will be overwritten.
 
 
 \subsection{Interrupts}
-% TODO Interrupts (mucked with IE flags) - Neil\\
-% Interrupt prologue
-% Interrupt setup
+The primary issue with interrupts is the interrupt enable flags. The MSP430,
+like many other embedded arhitetures has a master interrupt enable,
+as well as specific, device-level interrupt enables. Both are the user's
+responsibility, and need to be specified in the user-defined
+\texttt{INIT\_FUNC}, as both will be cleared on reset. When an interrupt fires,
+however, interrupts will be disabled by the CPU (again, on most architectures)
+and if the device loses power immediately after an interrupt occurs, there will
+be no record that the interrupt occured. This case is unaviodable on
+intermittent power without explicit support from the power system - we reason
+that if the user cared about every interrupt that fired and if missing one
+interrupt would be catestrophic to the device's operation, then, arguably, that
+device should not be intermittently powered.
 
 
+Beyond this, there remains the issue of how to return to the interrupt task
+with the interrupt enable set to the correct value if a power failure occurs.
+Since interrupts are disabled on boot (on the MSP430, for instance), the user
+needs to add code to their \texttt{INIT\_FUNC} to enable interrupts. However,
+since interrupt handlers are assumed to be non-reentrant on our system, if
+we are inside an interrupt handler, we need to keep interrupts disabled. We
+also need to write the address of the task that we should return to upon boot -
+the address of the \texttt{INTERRUPT\_TASK} on our system. If these are two
+separate variables, there is a correctness issue with respect to power
+failures. If we write the location of the \texttt{INTERRUPT\_TASK}, but die
+before we can write the fact that we are in an interrupt handler, we will
+return to te interrupt handler with interrupts enabled (since they will be
+enabled by the \texttt{INIT\_TASK}. If we reverse the order and write the fact
+that we are in an interrupt handler, then die before we can write the address
+of the \texttt{INTERRUPT\_TASK}, we will resume execution at a non-interrupt
+task with interrupts disabled, since the \texttt{INIT\_TASK} will not re-enable
+them. Both of these cases could cause execution to fail; the former fails if
+the interrupt handler is not written to be reentrant, the latter fails since
+interrupts will never be processed. Thus, these writes need to be atomic.
+
+
+We could depend on the programmer to designate all tasks that would be run as
+part of the interrupt handler, then use whether the current task address was
+equivalent to one of those as the flag that designates that we are in an
+interrupt handler, but this forces tasks to either be used as a part of the
+interrupt handler or not, which is bad for code reuse. This also prevents the
+user from being able to spawn off non-interrupt tasks as part of an interrupt
+handler.
+
+
+Instead, we exploit the fact that, generally, architectures are byte-aligned
+with a fixed instruction size of 16 bits or more - this means, at the very
+least, the lowest bit of any code address is zero. As this is true of ARM,
+RISC-V, MSP430, and most RISC architecutres, we feel that this is a reasonable
+assumption. We use this fact to store the flag that is set if execution is
+inside an interrupt handler in the lowest bit of the address of the task that
+we are currently executing (the task that execution will return to upon
+reboot). Thus, we can use a single write to encode all the needed information,
+giving atomicity. For simplicity for the programmer, upon an interrupt firing,
+an \texttt{interrupt\_prologue()} is run that does this write. The address stored
+in the current context is still the address of the user-defined
+\texttt{INTERRUPT\_TASK}. In our model, this write is the guarentuee that the
+system has recieved the interrupt - if power fails between when the interrupt
+fires and this write occurs, the interrupt will be ignored. This could be fixed
+by having a special capacitor in the power system to accomidate the write, but
+assumptions about the power system, arguably, should not be a part of \chain.
+
+
+To avoid the pathological stack corruption case described in the motivation for
+interrupts, we keep a flag in non-volatile memory that is set if a reboot has
+occured while in an interrupt handler and is unset otherwise. This flag is
+unset in the afformentioned \texttt{interrupt\_prologue()} and set in
+\texttt{main()}. If and only if the flag is unset when
+\texttt{return\_from\_interrupt()} is called, the two values pushed on the
+stack from an interrupt firing are popped off. Otherwise the stack remains
+unchanged, since the values will have been effectively cleared by a power
+failure.
+
+
+As of this writing, interrupts are still being debugged, but the above
+reasoning seems, in theory, correct.
 % TODO Mutexes (Simple, meant for pseudo channels) - Emily\\
 
 
@@ -687,16 +758,16 @@ re-assignation can be determined at compile-time, the overhead during runtime
 will still remain low.
 
 \section{Conclusion}
-The increased prevalence of IoT devices necessitates an increased ability to 
+The increased prevalence of IoT devices necessitates an increased ability to
 run larger, general purpose applications on devices with smaller memory and
 energy footprints. With the increased research on intermittently powered devices
-for use in the embedded sphere, it is a logical next step to explore the use 
+for use in the embedded sphere, it is a logical next step to explore the use
 of general purpose threaded code on an intermittent device. We have shown
 through the design and implementation of TAPIR on top of the Chain intermittent
 programming model that adding functionality for multiprogramming with
 multithreaded applications can have a low enough memory and power overhead to be
 considered useful on such a device. Additionally, we have implemented a safe
-locking structure for use in nonvolatile memory for such applications that 
+locking structure for use in nonvolatile memory for such applications that
 maintains RMW restrictions in the intermittent execution model and allows
 for larger shared data structures without the overhead of memory duplication
 that may overcrowd a small device. We have shown with this design that threaded
