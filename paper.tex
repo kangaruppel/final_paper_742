@@ -67,7 +67,49 @@ More text after the picture to show how that looks...
 
 
 \section{Related Work} -Emily
+In addition to the division of a program into tasks, as described above, prior work
+explores several different strategies for preserving state across reboots. The approaches
+range from fully independent of the programmer~\cite{ratchet, dewdrop} at one extreme, to programmer
+defined task boundaries~\cite{dino} at the other.  Compiler driven approaches such as the
+method used in ~\cite{Mementos} allow the programmer to specify high level behavior of the
+checkpointing system. A key similarity among the prior work is it
+does not lend itself well to multi-programming let
+alone multi-threading. In fact, many of these works state the assumption that the device
+hardware cannot support a conventional OS, and thus focus on single threaded programs. 
+Despite the availability of (relatively) inexpensive nonvolatile memory technology such as
+FRAM~\cite{quickrecall}, the the energy and storage overhead of checkpointing multiple
+thread states would limit the maximum per-thread checkpoint size. 
+
+Furthermore, if a multiprogrammed application were implemented using previous
+checkpointing strategies, reasoning about thread interleavings becomes  difficult to
+reason about because of unpredictable power failures. Any conventional timeout based
+thread switching approach will be challenging in an intermittent system, but systems that
+allows dynamic checkpointing~\cite{hibernus}, or dynamic task formation~\cite{Dino} become
+even more difficult to program. Particularly in systems like ~\cite{Dino} where the
+programmer is responsible for placing task boundaries, there is a risk that programmers
+will either overuse task boundaries in an effort to preserve any given thread's state, or
+underprovision task boundaries such that progress is never made because of context
+switching that dynamically expands the number of instructions between task boundaries. 
+
+While prior work has stopped short of suggesting an operating system for intermittently
+powered devices, a number of different works touch on the need for these devices to
+perform multiple tasks in the same workload. Buettner, Greenstein and Wetherall motivate
+their runtime, Dewdrop, based on difference in energy requirements for the tasks that a
+CRFID needs to perform~\cite{dewdrop}. The energy aware memory mapping in ~\cite{Aware}
+discusses the challenge of handling nondeterministic interrupts received by intermittent
+sensing platforms when a peripheral must be serviced immediately and control flow deviates
+from single threaded execution. From a hardware standpoint, the federated energy scheme in
+~\cite{ufop} provides a platform for removing the energy dependence between an MCU and its
+peripherals. Federated energy also simplifies a programmer's reasoning about reading from
+a single peripheral. However, federating energy does not help a programmer describe how to
+handle {\em multiple} peripherals. Consider a listing in
+~\cite{ufop} reporoduced in Figure ~\ref{copy}, and imagine the level of understanding
+of the hardware behavior a programmer would have to employ to, say, read one sensor if it
+is available but read from and proceed to process data from a different sensor if it is not. 
+
 Operating system work\\
+Want to do multiple things- i.e. federated energy \\
+Dewdrop- energy aware task scheduling\\
 TU delft guys...\\
 Energy Align\\
 TinyOS stuff in wireless sensor networks\\
@@ -85,9 +127,8 @@ Mutexes - Emily\\
 User programming model for threads - Neil\\
 Round Robin (alternatives, on reboot)\\
 SIMD vs MIMD\\
-SIMD w/ channels (you don't get your own registers...etc -
-    just channels, since intermittent)\\
-
+SIMD w/ channels (you don't get your registers...etc -
+    just channels, since intermittent\\
 \subsection{Interrupts}
 \subsubsection{Motivation}
 Ideally, multithreading would extend to a programming model that can utilize
