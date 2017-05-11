@@ -97,7 +97,7 @@ multi-threaded control flow operation. In order to do this we create a lightweig
 operation and provide a method of sharing large data structures between tasks with a locking feature. This method is low-memory and low-execution
 overhead, which can then maintain the Chain programming semantics at the user level still successfully complete work on an intermittent device.
 
-Example Citation\cite{Chain, Mementos, Aware, Dino}!
+%Example Citation\cite{Chain, Mementos, Aware, Dino}!
 
 
 %Sample of adding a picture across the top of a split page...
@@ -114,7 +114,7 @@ Example Citation\cite{Chain, Mementos, Aware, Dino}!
 %\end{minipage}
 %\end{figure*}
 
-More text after the picture to show how that looks...
+%More text after the picture to show how that looks...
 
 
 \section{Related Work} 
@@ -158,12 +158,13 @@ handle {\em multiple} peripherals. Consider a listing in
 of the hardware behavior a programmer would have to employ to, say, read one sensor if it
 is available but read from and proceed to process data from a different sensor if it is not. 
 
-\begin{figure}[h]
-  \centering
-  \includegraphics[width=0.99\columnwidth]{figs/listing}
-  \caption{{\bf Example program for sensing and sending data}}
-  \label{fig:copy}
-\end{figure}
+% Doesn't compile, commenting out
+%\begin{figure}[h]
+%  \centering
+%  \includegraphics[width=0.99\columnwidth]{figs/listing}
+%  \caption{{\bf Example program for sensing and sending data}}
+%  \label{fig:copy}
+%\end{figure}
 
 The wireless sensor networks community has explored multiple approaches for handling
 multitasking on resource limited devices. The designs tend to provide a combination of
@@ -206,6 +207,16 @@ array accesses occur because, for instance, a self-channel has more dirty
 fields than \texttt{MAX\_NUM\_DIRTY\_FIELDS}.
 
 
+\chain also struggles with long-range control flow. For each transition to a
+new task, the transition is an explicit one-to-one mapping. \chain provides no
+semantics, for instance, to transfer control from task A to task B, then also
+transfer control to task C after task B completes, without the programmer
+placing \texttt{TRANSITION\_TO(task\_C)} inside task B. This could be done by
+using channels in a similar manner to function pointers, while staying within
+the semantics of \chain (as we did), but reasoning about code becomes more
+challenging for the programmer.
+
+
 Future work for \chain needs to include some sort of memory allocation based on
 the set of channels allocated in the program, but this is work for a compiler
 and beyond the scope of this work. For our purposes of threaded applications,
@@ -216,13 +227,45 @@ abstracted from the programmer.
 
 
 \section{What we did} % TODO change title
-Scheduler\\
 Mutexes - Emily\\
-User programming model for threads - Neil\\
 Round Robin (alternatives, on reboot)\\
 SIMD vs MIMD\\
-SIMD w/ channels (you don't get your registers...etc -
-    just channels, since intermittent\\
+SIMD w/ channels (you don't get your own registers...etc -
+    just channels, since intermittent)\\
+
+
+\subsection{Scheduler}
+For a multi-threaded programming model to exist, one must create a structure to
+switch between multiple threads. To keep with \chain's model, we chose to make
+the scheduler its own task. The alternative is possible, but since our
+implementation of the scheduler required multicast channels, it makes more
+sense to have the multicast channels have one endpoint well defined, instead of
+some sort of all-to-all channel (which is just a global location in
+non-volatile memory). The multicast channels channels are not strictly
+necessary, but, all in all, we believe that keeping the scheduler as an
+explicit task is good for abstraction. Additionally, if a task has few
+self-channels and the data structures passed in those self-channels are
+relatively small, the overhead of transitioning to that task is relatively
+small, as few double-buffers for self-channels need to be flipped (which is
+arguably the largest overhead).
+
+
+\subsection{Programming Model}
+Threaded applications that use POSIX or some other standard library interface
+tend to use function calls to interact with the library - for instance, the
+user calls a function \texttt{thread\_create} to spawn off a thread.
+Unfortunately, this is a difficult programming model to keep under
+intermittence, since function calls like \texttt{thread\_create} tend to
+involve non-idempotent actions, like appending to a list or incrementing a
+variable's value. This leaves two clear options - making the functions to
+interact with our threading library \chain tasks, or adding infrastructure to
+to our threading library to make the non-idempotent actions that need to occur
+act idempotently. We opted for the latter - we feel that it is more valuable to
+maintain programmability by provide the user with an interface that they
+expect, instead of trying to extend a \chain semantic like
+\texttt{TRANSITION\_TO} to also include thread creation.
+
+
 \subsection{Interrupts}
 \subsubsection{Motivation}
 Ideally, multithreading would extend to a programming model that can utilize
@@ -233,7 +276,9 @@ the thread returns to its original task). However, the inherent
 non-deterministic
 nature of interrupts from, say, an ADC, creates additional complexity for the
 programmer when reasoning about shared memory, especially with respect to
-idempotence.\\
+idempotence.
+
+
     Specific to the MSP430 architecture (but common in other systems), there is
 also the issue of stack integrity. On the MSP430, when an interrupt fires,
 the program counter and status register are pushed onto the stack for
@@ -250,6 +295,7 @@ could fire when the system has a low amount of energy remaining, thus
 rendering the system unable to finish executing the interrupt handler,
 leading to a host of potential problems.
 
+
 \subsubsection{Interface}
 We provide the functions and macros in figure 3 as an interface to
 the programmer. The standard workflow is as follows: the programmer
@@ -265,8 +311,9 @@ The programmer's code remains unmodified, with the exception of a call to
 register initialization is necessary to setup the interrupts for the
 application.\\
 
+
 \begin{figure*}
-\begin{minipage}[b]{0.49\textwidth}
+\begin{minipage}[b]{1.0\textwidth}
 \begin{lstlisting}
     /** Enable interrupts if int_setup_complete() has been called
       * and execution is not inside an interrupt handler */
@@ -295,7 +342,9 @@ by keeping specific capacitors for interrupt handlers\cite{Aware}, but this
 approach fails if interrupt handlers take longer than the capacitor has
 energy for. This bug handlers not completing due to power failure is
 unintuitive for programmers coming from consistently powered devices and
-makes certain devices unusable under intermittent power.\\
+makes certain devices unusable under intermittent power.
+
+
 With interrupt handlers as tasks, if a power failure occurs during a
 handler, execution will resume at the handler. This isn't ideal, the
 standard paradigm that interrupt handlers are generally short and fast
@@ -339,7 +388,6 @@ prohibitively costly in most applications \cite{Aware}.
 
 
 \section{Implementation}
-We only had to break \chain a little. We promise!
 Scheduler Data structures and idempotence (what we broke and why) -NEIL\\
 Mutexes (Simple, meant for pseudo channels) - Emily\\
 Interrupts (mucked with IE flags) - Neil\\
@@ -359,16 +407,16 @@ Performance (\# reboots)\\
 
 \section{Future Work}
 Future work is focused on saving memory by using channel and code reuse optimizations when forking new chain programs from current tasks.
-When forking a new task, a channel may be duplicated, which linearly increases the amount of memory neceesary for channels with the number of currently running programs.
+When forking a new task, a channel may be duplicated, which linearly increases the amount of memory necessary for channels with the number of currently running programs.
 It is possible to reuse channels between tasks if the number of iterations of that task are known at compile time and it can be estimated how
-many are to be running simulateously. A register allocation graph coloring scheme can then be repurposed for reusing channels allocated at compile time.
+many are to be running simultaneously. A register allocation graph coloring scheme can then be repurposed for reusing channels allocated at compile time.
 In either case the current channel naming scheme must be changed to support channel duplication, ether real or simulated.
 Currently channels are allocated and named at compile time by combining the names of the input and output channel tasks.
 However, if tasks can be duplicated this naming scheme must be altered to support multiple channels of the same name and potentially multiple channels of the same name.
 This can be done with a vector clock timestamp or a simple counter stored in nonvolatile memory to create unique channel names.
 
 Additionally, it is possible to save memory by sharing arrays between tasks without the necessity of copying the array in its entirety in each channel.
-To do this the concept of interrmittent tasks mutexes for shared resources and data structures would be introduced.
+To do this the concept of intermittent tasks mutexes for shared resources and data structures would be introduced.
 The structures are protected by a lock that contains the thread ID of the task that currently holds the lock.
 In order to allow all tasks access to a data structure without breaking all chain semantics, a modified version of a module channel would be used in order
 for multiple tasks to potentially modify one channel.
@@ -381,15 +429,17 @@ is necessary to allocate. Depending on the workload, the amount of forked thread
 
 Future work also includes optimizations to reduce overhead, such as converting the free indices array to a free indices bitmap in order to reduce the amount of
 baseline memory that the scheduler task uses.
-Re-assignation and re-use of channels at runtime would increaes overhead, but it is thought that the memory saved by this procedure is worth the trade-off of increased overhead.
+Re-assignation and re-use of channels at runtime would increase overhead, but it is thought that the memory saved by this procedure is worth the trade-off of increased overhead.
 If re-assignation can be determined at compile-time, the overhead during runtime will still remain low.
 
 \section{Conclusion}
 Multithreading in intermittence {\em is} a good idea!
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=0.9\columnwidth]{figs/tapir}
-\end{figure}
+
+% Doesn't compile, commenting out
+%\begin{figure}[ht]
+%  \centering
+%  \includegraphics[width=0.9\columnwidth]{figs/tapir}
+%\end{figure}
 
 
 \balance
