@@ -97,24 +97,6 @@ multi-threaded control flow operation. In order to do this we create a lightweig
 operation and provide a method of sharing large data structures between tasks with a locking feature. This method is low-memory and low-execution
 overhead, which can then maintain the Chain programming semantics at the user level still successfully complete work on an intermittent device.
 
-%Example Citation\cite{Chain, Mementos, Aware, Dino}!
-
-
-%Sample of adding a picture across the top of a split page...
-
-%\begin{figure*}
-%\centering
-%\begin{minipage}[b]{0.49\textwidth}
-%  \includegraphics[width=0.95\textwidth,center]{capybara-all.png}
-%\caption{Capybara power system overview}\label{label-a}
-%\end{minipage}\hfill
-%\begin{minipage}[b]{0.49\textwidth}
-%  \includegraphics[width=0.95\textwidth,center]{power_modes.pdf}
-%\caption{Effect of different power modes}\label{label-b}
-%\end{minipage}
-%\end{figure*}
-
-%More text after the picture to show how that looks...
 
 
 \section{Related Work} 
@@ -159,12 +141,12 @@ of the hardware behavior a programmer would have to employ to, say, read one sen
 is available but read from and proceed to process data from a different sensor if it is not. 
 
 % Doesn't compile, commenting out
-%\begin{figure}[h]
-%  \centering
-%  \includegraphics[width=0.99\columnwidth]{figs/listing}
-%  \caption{{\bf Example program for sensing and sending data}}
-%  \label{fig:copy}
-%\end{figure}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.99\columnwidth]{figs/listing}
+  \caption{{\bf Example program for sensing and sending data}}
+  \label{fig:copy}
+\end{figure}
 
 The wireless sensor networks community has explored multiple approaches for handling
 multitasking on resource limited devices. The designs tend to provide a combination of
@@ -226,7 +208,7 @@ and since it solves the issue of idempotent data accesses in a way that is
 abstracted from the programmer.
 
 
-\section{What we did} % TODO change title
+\section{System Implementation } % TODO change title
 Mutexes - Emily\\
 Round Robin (alternatives, on reboot)\\
 SIMD vs MIMD\\
@@ -265,6 +247,42 @@ maintain programmability by provide the user with an interface that they
 expect, instead of trying to extend a \chain semantic like
 \texttt{TRANSITION\_TO} to also include thread creation.
 
+\subsection{Locking Primitive} 
+To improve a programmer's control of shared data between threads, and to reduce
+the complexity of accessing data that may be touched by many different tasks we
+implement a simple mutex object that can be added to a channel. The mutex is
+designed to be used in a standard \texttt{channel}, not a double buffered
+\texttt{self\_channel}, so it must be able to tolerate a failure after a
+read/write operation (i.e. test and set). To achieve idempotence, we add a
+\texttt{thread\_id} to the \texttt{free} bit inside of each mutex. When
+attempting to acquire a lock, a thread checks if its thread id is equal to the
+lock holder, then it checks if the lock is free. If either condition is true,
+the thread successfully acquires the lock, otherwise the \texttt{mutex\_lock}
+function fails. Upon successfully acquiring the lock, a thread writes its id to
+the mutex's holder id, and changes the \texttt{free} bit to \texttt{status =
+held}. This scheme guarantees correctness because if a failure occurs after the
+mutex is set but before the task commits, the task will read out the id of the
+mutex holder before checking if it is free. Upon matchint its id with the holder
+id, the task will proceed regardless of the fact that \texttt{status = held}.
+%Maybe add a figure here to make the sequence of read/write/failure clearer... 
+Further, a task must finsih executing before switching to another thread, so
+there is no possiblity for an external thread to see a value that was not
+committed by another task. 
+
+It is important to note that the mutex object can be modified idempotently, but
+accesses to the data in the same channel as the mutex must adhere to channel
+exclusion. In our example application, the mutex is contained within a user
+defined \texttt{shared\_channel} structure that is analogous to a
+\texttt{multicast\_channel} but abandons the naming convention that "restricts"
+the channel to a static subset of tasks. Any task may read {\em or} or write to
+the \texttt{shared\_channel}, but performing both would break correctness. In
+the future, a compiler could be used to guarantee that a
+\texttt{shared\_channel} is not read and written by the same task, but at
+present we believe that the \texttt{mutex} and \texttt{shared\_channel}
+interface is easier for programmers to use than \texttt{multicast\_channels}, or
+a sepcialized double buffered channel when passing data between threads. It
+maintains familiar semantics for programmers and does not incur the memory
+overhead of double buffering. 
 
 \subsection{Interrupts}
 \subsubsection{Motivation}
