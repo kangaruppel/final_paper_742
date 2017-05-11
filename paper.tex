@@ -11,6 +11,35 @@
 \usepackage[export]{adjustbox}
 \usepackage{wrapfig}
 \newcommand{\chain}{Chain\xspace}
+
+\usepackage{color}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4
+    }
+    \lstset{style=mystyle}
+
+
 \numberofauthors{3}
 
 %\author{
@@ -117,7 +146,7 @@ overhead, which can then maintain the Chain programming semantics at the user le
 %More text after the picture to show how that looks...
 
 
-\section{Related Work} 
+\section{Related Work}
 In addition to the division of a program into tasks, as described above, prior work
 explores several different strategies for preserving state across reboots. The approaches
 range from fully independent of the programmer~\cite{ratchet, dewdrop} at one extreme, to programmer
@@ -126,10 +155,10 @@ method used in ~\cite{Mementos} allow the programmer to specify high level behav
 checkpointing system. A key similarity among the prior work is it
 does not lend itself well to multi-programming let
 alone multi-threading. In fact, many of these works state the assumption that the device
-hardware cannot support a conventional OS, and thus focus on single threaded programs. 
+hardware cannot support a conventional OS, and thus focus on single threaded programs.
 Despite the availability of (relatively) inexpensive nonvolatile memory technology such as
 FRAM~\cite{quickrecall}, the the energy and storage overhead of checkpointing multiple
-thread states would limit the maximum per-thread checkpoint size. 
+thread states would limit the maximum per-thread checkpoint size.
 
 Furthermore, if a multiprogrammed application were implemented using previous
 checkpointing strategies, reasoning about thread interleavings becomes  difficult to
@@ -140,7 +169,7 @@ even more difficult to program. Particularly in systems like ~\cite{Dino} where 
 programmer is responsible for placing task boundaries, there is a risk that programmers
 will either overuse task boundaries in an effort to preserve any given thread's state, or
 underprovision task boundaries such that progress is never made because of context
-switching that dynamically expands the number of instructions between task boundaries. 
+switching that dynamically expands the number of instructions between task boundaries.
 
 While prior work has stopped short of suggesting an operating system for intermittently
 powered devices, a number of different works touch on the need for these devices to
@@ -156,7 +185,7 @@ a single peripheral. However, federating energy does not help a programmer descr
 handle {\em multiple} peripherals. Consider a listing in
 ~\cite{ufop} reporoduced in Figure ~\ref{copy}, and imagine the level of understanding
 of the hardware behavior a programmer would have to employ to, say, read one sensor if it
-is available but read from and proceed to process data from a different sensor if it is not. 
+is available but read from and proceed to process data from a different sensor if it is not.
 
 \begin{figure}[h]
   \centering
@@ -176,7 +205,7 @@ multithreading" such that events can trigger a context switch, but multithreadin
 be timer based~\cite{contiki}. The goal of multitasking interfaces in wireless sensor
 networks is to provide a tradeoff between network lifetime and quality of service. This
 differs from the intermittent programming model where the challenge is not system
-lifetime, but system functionality based on energy availability. 
+lifetime, but system functionality based on energy availability.
 
 \section{Chain Discussion}
 \chain, while providing a reasonable interface for programmers to work within,
@@ -313,7 +342,7 @@ application.\\
 
 \begin{figure*}
 \begin{minipage}[b]{1.0\textwidth}
-\begin{lstlisting}
+\begin{lstlisting}[language=C]
     /** Enable interrupts if int_setup_complete() has been called
       * and execution is not inside an interrupt handler */
     void enable_interrupts();
@@ -387,7 +416,82 @@ prohibitively costly in most applications \cite{Aware}.
 
 
 \section{Implementation}
-Scheduler Data structures and idempotence (what we broke and why) -NEIL\\
+\subsection{Scheduler}
+\begin{figure*}
+\begin{minipage}[b]{.48\textwidth}
+\begin{lstlisting}[language=C]
+    typedef struct thread_t {
+        unsigned thread_id;
+        context_t context;
+    } thread_t;
+
+    typedef struct thread_state_t {
+        thread_t thread;
+        unsigned active;
+    } thread_state_t;
+
+    // Array of running threads
+    thread_state_t threads[MAX_NUM_THREADS];
+
+    // List of free indicies in threads[]
+    unsigned free_indicies[MAX_NUM_THREADS];
+    unsigned free_indicies_size;
+
+    // Index of current running thread in threads[]
+    // Stored in self channel
+    unsigned current;
+\end{lstlisting}
+\caption{Scheduler Data Structures}\label{schDataStruct}
+\end{minipage}\hfill
+\end{figure*}
+
+The data structures for our scheduler are listed in figure \ref{schDataStruct}.
+Like the rest of chain, memory for data structures is allocated at compile
+time. Thus, the limit on the maximum number of threads allowed in a system is
+fixed arbitrarily - not ideal, but there isn't a better option while operating
+inside chain. The \texttt{threads} array is stored in all-to-one channel, from
+every task to the scheduler task. The \texttt{free\_indicies} array is stored
+in a one-to-all channel, from the scheduler task to every task.
+
+
+Neither all-to-one nor one-to-all channels fit into standard \chain channel
+semantics, although they resemble multicast-in and multicast-out channels
+described in the original \chain paper. We eschew the notion that channels
+have fixed start and end points and instead treat the channel as a general
+location in non-volatile memory that can be read from and written to by
+arbitrary tasks. However, accesses to these channels are encapsulated by our
+library, so the programmer has no need to think about idempotency violations.
+
+
+With these multicast channels, the scheduler task can act as a buffer between
+multiple threads - arbitrary tasks write \texttt{threads[]} with calls to
+\texttt{thread\_create} and \texttt{thread\_end} and tasks read from
+\texttt{free\_indicies} through calls to thread create, maintaining
+idempotency. Inside the scheduler task, we read and write \texttt{current},
+so \texttt{current} is double buffered. The only issue is with
+\texttt{thread\_init} since it is called from user-defined tasks and
+initializes \texttt{current} - the same task that called \texttt{thread\_init}
+could call \texttt{thread\_create}, and the \texttt{thread\_create} call
+wouldn't see the update to the variable. Since \texttt{current} is always
+initialized to the same value (0), we opt for manually swapping the buffer on
+\texttt{current} so that other threads can see the update.
+
+
+We keep an unsigned integer, \texttt{curr\_free\_index}, in volatile memory,
+zeroed on every reboot, that acts as a current pointer in
+\texttt{free\_indicies[]}. Every time the scheduler task runs,
+\texttt{free\_indicies[]} is updated with the state of \texttt{threads[]},
+based on whether or not the active bit is set for a given index. When
+\texttt{thread\_create} is called, if \texttt{curr\_free\_index} is greater
+than \texttt{free\_indicies\_size}, then \texttt{thread\_create} will fail in
+POSIX fashion - the system does not have enough resources to support another
+thread. Otherwise, \texttt{threads[free\_indicies[curr\_free\_index]]} is set
+to the new thread. Upon power failure, \texttt{curr\_free\_index} is reset to
+zero, so as long as the rest of the operations in the task are idempotent, so
+will \texttt{thread\_create} calls - the same locations in \texttt{theads[]}
+will be overwritten.
+
+
 Mutexes (Simple, meant for pseudo channels) - Emily\\
 Interrupts (mucked with IE flags) - Neil\\
 % Interrupt prologue
