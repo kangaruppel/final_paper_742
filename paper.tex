@@ -41,27 +41,71 @@
 Killer abstract.
 \end{abstract}
 
-\section{Introduction/Background} -Amanda
+\section{Introduction/Background}
   \label{sec:intro}
-  Chain, DINO\\
-  Multithreading\\
-  Intermittance Review\\
-  RMW\\
-  Example Citation\cite{Chain, Mementos, Aware, Dino}!
+%A/N: I don't think that the paragraphs in this section are in a great order, but I am having a hard time making it flow better.
+%Also I'm absolutely sure each of these paragraphs can definitely be bulked up more for length. Please help thank you!!!
+
+The increase in popularity of Internet of Things (IoT) has led to research focus in wireless technologies and low-power computing.
+New technologies in both of these areas has led to new
+\textit{energy-harvesting computing devices} that operates only with power it has
+collected from the surrounding environment \cite{Chain}. These devices have use cases in medical, IoT, and research applications.
+
+Commonly, an energy-harvesting devices charges and collects power in a storage capacitor until the capacitor reaches a sufficient level of charge.
+Once the capacitor is charged, the device begins its operation phase and will run until the capacitor is drained.
+This leads to the \textit{intermittent execution model} where regular shut downs and reboots to recharge are the common case rather than the rare case in
+a traditional execution model. Because the intermittent execution model includes power failures and reboots, continuous execution programs behave
+irregular behavior on an intermittent device and a new programming model is needed.
+
+Our multithreaded model is build on two existing programming models, DINO and Chain.
+An initial intermittent programming model DINO breaks intermittent programs into tasks, which creates automatic checkpointing locations
+during exeuction \cite{Dino}. DINO uses a checkpointing and recovery model that tracks both volatile and nonvolatile memory.
+The DINO execution model executes all tasks transactionally, leading to atomic task semantics and does not permit consistency violations in
+nonvolatile state \cite{Dino}. Chain, a more recent iteration of the concepts in DINO, uses volatile state rarely, if ever, and uses task boundaries
+called channels to store most used data in nonvolatile memory \cite{Chain}. At compile time, Chain allocates the necessary channels between tasks
+by parsing channel read and write statements in order to match up aligning tasks. All inputs and outputs to each task, as well as necessary data
+structures, are stored in a channel for a respective task. A channel may only be modified by one task, and only one task may run at a time,
+which mitigates time of check, time of use bugs (TOCTOU) in intermittence.
+The one exception is a self-channel for recursive code, which is double buffered.
+Keeping all modifiable data in nonvolatile memory that is not open to easy rewrite makes these tasks idempotent across reboots.
+Because of continuous reboots, many operations necessarily will be executed more than once,
+and correctness is compromised if those operations are not guaranteed to have the same outcome by the programming model after each reboot.
+
+A main issue in intermittent computing along with idempotence is the Read-Modify-Write (RMW) problem.
+Because volatile memory is cleared on each reboot, it is possible that in between reading and modifying or modifying and writing the data had changed,
+leading to incorrect answers and an inconsistent state. In the Chain programming model, this problem is solved by creating a new task to house the
+problematic operations. Because tasks are blocked by channels that can only be written by one task and are saved to nonvolatile memory, RMW is avoided.
+However, in multiprogramming the problem manifests in another way; if the scheduler switches tasks on a reboot, the currently running thread could have
+been in the middle of its critical section, making it difficult for other threads to make progress if context switches always occur after a reboot.
+Because of this we have decided on a round-robin scheduler with context switches at the end of a task, to guarantee forward progress while knowing
+which tasks have run to completion.
+
+In the current Chain programming model, writing code that completes multiple objectives correctly is now difficult.
+Current chain programs are small and only have one objective. Additionally, there is no support for advanced control flow.
+Multiple control threads may exist, but in the current model there is no support for them and programmability is difficult and often incorrect.
+Supporting multiple control threads in Chain also necessitates a linear increase in a limited memory resource, because all large shared data structures
+must be copied into each necessary channel, and also makes updating the structures a time consuming, high-overhead task.
+In order to increase functionality of chain and to mitigate these shortcomings, we add familiar threading semantics to Chain in order to express
+multi-threaded control flow operation. In order to do this we create a lightweight scheduler task that becomes part of the inter-task checkpointing
+operation and provide a method of sharing large data structures between tasks with a locking feature. This method is low-memory and low-execution
+overhead, which can then maintain the Chain programming semantics at the user level still successfully complete work on an intermittent device.
+
+Example Citation\cite{Chain, Mementos, Aware, Dino}!
 
 
 %Sample of adding a picture across the top of a split page...
-\begin{figure*}
-\centering
-\begin{minipage}[b]{0.49\textwidth}
-  \includegraphics[width=0.95\textwidth,center]{capybara-all.png}
-\caption{Capybara power system overview}\label{label-a}
-\end{minipage}\hfill
-\begin{minipage}[b]{0.49\textwidth}
-  \includegraphics[width=0.95\textwidth,center]{power_modes.pdf}
-\caption{Effect of different power modes}\label{label-b}
-\end{minipage}
-\end{figure*}
+
+%\begin{figure*}
+%\centering
+%\begin{minipage}[b]{0.49\textwidth}
+%  \includegraphics[width=0.95\textwidth,center]{capybara-all.png}
+%\caption{Capybara power system overview}\label{label-a}
+%\end{minipage}\hfill
+%\begin{minipage}[b]{0.49\textwidth}
+%  \includegraphics[width=0.95\textwidth,center]{power_modes.pdf}
+%\caption{Effect of different power modes}\label{label-b}
+%\end{minipage}
+%\end{figure*}
 
 More text after the picture to show how that looks...
 
@@ -114,11 +158,41 @@ TU delft guys...\\
 Energy Align\\
 TinyOS stuff in wireless sensor networks\\
 
-\section{Chain Discussion} -NEIL
+\section{Chain Discussion}
+\chain, while providing a reasonable interface for programmers to work within,
+has several inefficiencies that give poor performance on certain applications.
+First, there is no notion of data sharing between tasks - all communication is
+strictly done through channels. This is useful, as the programmer never needs
+to reason about idempotence with respect to their data, but all data that needs
+to be transferred between tasks needs to be housed in a channel. Since, under
+the original constraints of \chain, channels cannot be written or read from by
+tasks that do not own the channel - only tasks that own the channel can access
+the data within. This means that large data structures, arrays for instance,
+that need to be shared between several channels must be unnecessarily
+duplicated in non-volatile memory - one copy of the data structure for each
+channel that it needs to be accessed in. Granted, there is no enforcement of
+channel ownership by the compiler, but the programmer risks idempotence
+violations by straying outside the constraints of chain. We exploit this to
+create an equivalent to the multicast-in and multicast-out channels described
+in \chain, but using them requires much more reasoning on the part of the programmer.
 
-Arrays in channels and why that's bad\\
-MAX\_NUM\_DIRTY\_FIELDS\\
-Exploiting the fact that there isn't a compiler\\
+
+Additionally, since dynamic memory allocation is arguably too expensive to run
+on intermittently powered systems, memory is allocated at compile time.
+Unfortunately, since there isn't a compiler specifically for \chain, arrays
+are statically sized based on \texttt{\#define} parameters. This can be
+create tricky memory corruption errors for the programmer when out-of-bounds
+array accesses occur because, for instance, a self-channel has more dirty
+fields than \texttt{MAX\_NUM\_DIRTY\_FIELDS}.
+
+
+Future work for \chain needs to include some sort of memory allocation based on
+the set of channels allocated in the program, but this is work for a compiler
+and beyond the scope of this work. For our purposes of threaded applications,
+however, \chain is a sufficient launching pad, despite its misgivings since it
+does not require specialized hardware or energy subsystems to work effectively,
+and since it solves the issue of idempotent data accesses in a way that is
+abstracted from the programmer.
 
 
 \section{What we did} % TODO change title
@@ -202,7 +276,6 @@ approach fails if interrupt handlers take longer than the capacitor has
 energy for. This bug handlers not completing due to power failure is
 unintuitive for programmers coming from consistently powered devices and
 makes certain devices unusable under intermittent power.\\
-
 With interrupt handlers as tasks, if a power failure occurs during a
 handler, execution will resume at the handler. This isn't ideal, the
 standard paradigm that interrupt handlers are generally short and fast
@@ -211,7 +284,8 @@ being missed because processing the interrupt took longer than the
 timer period), but we argue that it is more unreasonable to say
 that interrupt handlers that take too long will not complete than
 to violate the standard paradigm, since the former arbitrarily restricts
-the application domain.\\
+the application domain.
+
 
 For the sake of simplicity, we assume that interrupt handlers are not
 reentrant. Since reentrant handlers can be used in a non-reentrant fashion
@@ -220,7 +294,8 @@ Moreover, the benefit to reentrant handlers, the application will not miss an
 interrupt firing because processing the previous one took too long, is
 secondary on intermittent architectures - there is likely a higher chance that
 a power failure will occur than an interrupt handler causing an interrupt to be
-missed, unless interrupts are firing on an extremely fine granularity.\\
+missed, unless interrupts are firing on an extremely fine granularity.
+
 
 When an interrupt handler has completed, the programmer calls
 \texttt{return\_from\_interrupt()}, which returns execution to the start
@@ -240,9 +315,7 @@ trivial for the register set, but difficult and potentially extremely costly to
 store the stack, as execution could be several functions deep. Even determining
 how much stack to save could be prohibitively costly. Another alternative would
 be to store program state in non-volatile, but this has been shown to be
-prohibitively costly in most applications \cite{Aware}. \\
-
-Interrupts - NEIL\\
+prohibitively costly in most applications \cite{Aware}.
 
 
 \section{Implementation}
@@ -265,29 +338,29 @@ Performance (\# reboots)\\
 
 
 \section{Future Work}
-Future work is focused on saving memory by using channel and code reuse optimizations when forking new chain programs from current tasks. 
+Future work is focused on saving memory by using channel and code reuse optimizations when forking new chain programs from current tasks.
 When forking a new task, a channel may be duplicated, which linearly increases the amount of memory neceesary for channels with the number of currently running programs.
-It is possible to reuse channels between tasks if the number of iterations of that task are known at compile time and it can be estimated how 
+It is possible to reuse channels between tasks if the number of iterations of that task are known at compile time and it can be estimated how
 many are to be running simulateously. A register allocation graph coloring scheme can then be repurposed for reusing channels allocated at compile time.
 In either case the current channel naming scheme must be changed to support channel duplication, ether real or simulated.
-Currently channels are allocated and named at compile time by combining the names of the input and output channel tasks. 
+Currently channels are allocated and named at compile time by combining the names of the input and output channel tasks.
 However, if tasks can be duplicated this naming scheme must be altered to support multiple channels of the same name and potentially multiple channels of the same name.
 This can be done with a vector clock timestamp or a simple counter stored in nonvolatile memory to create unique channel names.
 
 Additionally, it is possible to save memory by sharing arrays between tasks without the necessity of copying the array in its entirety in each channel.
 To do this the concept of interrmittent tasks mutexes for shared resources and data structures would be introduced.
 The structures are protected by a lock that contains the thread ID of the task that currently holds the lock.
-In order to allow all tasks access to a data structure without breaking all chain semantics, a modified version of a module channel would be used in order 
-for multiple tasks to potentially modify one channel. 
-However, even with that change it is challenging to define sharing between threads in an intermittent context and to maintain chain semantics while implementing 
-shared data structures while still maintaining correctness. 
-Because channel sizes are constrained at compile time currently, it is also necessary to know at compile time all data structures, shared or private, 
-that are going to be used during execution of a chain program or programs. 
-It is a challenge for future work in this field to constrain memory for channels at compile time and for the compiler to know with certainty how much memory 
+In order to allow all tasks access to a data structure without breaking all chain semantics, a modified version of a module channel would be used in order
+for multiple tasks to potentially modify one channel.
+However, even with that change it is challenging to define sharing between threads in an intermittent context and to maintain chain semantics while implementing
+shared data structures while still maintaining correctness.
+Because channel sizes are constrained at compile time currently, it is also necessary to know at compile time all data structures, shared or private,
+that are going to be used during execution of a chain program or programs.
+It is a challenge for future work in this field to constrain memory for channels at compile time and for the compiler to know with certainty how much memory
 is necessary to allocate. Depending on the workload, the amount of forked threads would need to be constrained such that threads don't overflow nonvolatile memory at runtime.
 
-Future work also includes optimizations to reduce overhead, such as converting the free indices array to a free indices bitmap in order to reduce the amount of 
-baseline memory that the scheduler task uses. 
+Future work also includes optimizations to reduce overhead, such as converting the free indices array to a free indices bitmap in order to reduce the amount of
+baseline memory that the scheduler task uses.
 Re-assignation and re-use of channels at runtime would increaes overhead, but it is thought that the memory saved by this procedure is worth the trade-off of increased overhead.
 If re-assignation can be determined at compile-time, the overhead during runtime will still remain low.
 
