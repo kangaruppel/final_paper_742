@@ -74,7 +74,24 @@
 
 %Only including an abstract since it looks like the submission site wants one...
 \begin{abstract}
-Killer abstract.
+The growth of research in IoT related wireless technologies and low-power computing
+has led to the new area of \textit{energy-harvesting computation} on \textit{intermittently
+powered devices}. Intermittently powered devices are governed by the \textit{intermittent
+execution model} where regular reboots due to an energy charge cycle necessitate division
+of a program into small idempotent \textit{tasks}. However, current applications for
+intermittently powered devices are small and generally contain little functionality.
+
+In this paper we introduce the \textit{Threaded Application Programming on Intermittent Resources} 
+(TAPIR) model to expand the current intermittent programming model \textit{Chain} to 
+include general multiprogramming. TAPIR allows the range of possible programs for 
+intermittent devices to include more general computation functionality while leaving the
+memory and energy overhead low enough that intermittent computation on those workloads 
+still guarantees forward progress. While nonvolatile memory usage will increase per thread
+scheduled, certain optimizations are possible to reduce memory overhead overall. Additionally,
+context switching through our scheduler task is a low-instruction count static overhead that is
+easily accounted for in energy calculations. Through the design of TAPIR we show that general
+purpose threaded applications are feasible on an intermittently powered device.
+ 
 \end{abstract}
 
 
@@ -284,7 +301,10 @@ chosen for this design because it is simple to implement and uses only one index
 very little power or memory overhead as compared to other scheduling algorithms. It is
 critical for multithreading in Chain to not add significant power and memory
 overhead in scheduling over conventional Chain so that the workload can
-make as much forward progress as possible on one charge cycle.
+make as much forward progress as possible on one charge cycle. While out of
+scope for this project, future work may include a priority scheduler to decrease
+latency for certain threads due to context switching for I/O or other input latency
+sensive workloads.
 
 When designing threading in Chain, the shared memory model is a main indicator
 of the threaded execution model. The two most probable options when designing
