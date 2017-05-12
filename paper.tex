@@ -707,10 +707,11 @@ expect.
 This application was built on top of the app-blinker-chain
 example~\cite{blinker} and modified to remove the delays and LED activations, so
 that it just passes data through three tasks until a maximum count is reached,
-and then the thread terminates. This app was primarily used to demonstrate the
+and then the thread terminates. This app was used to demonstrate the
 initial functionality of the system, and then to test mutexes. In both cases a
 combination of \texttt{LOG} statements and final output values were used to
-confirm the correct operation of the system.
+confirm the correct operation of the system, however we do not report memory
+usage or reboots during execution for this application. 
 \subsubsection{Cuckoo-RSA (CRSA)}
 This application is a combination of a cuckoo filter that inserts and queries 64
 values a Bloom filter-like data structure~\cite{Chain}, and RSA encryption of message
@@ -722,7 +723,7 @@ merged, and we were unable to fix the problem. Unit tests running the RSA
 application in single threaded mode through our scheduler and using our
 multi-threading library produce the correct result, but any combination of RSA
 and cuckoo filtering produces the incorrect result. However, RSA does run to
-completion, so we believe the results from C-RSA are still useful.
+completion, so we believe at least the memory overhead results from C-RSA are still useful.
 \subsubsection{Cuckoo-Bitcount (CB)}
 This application is a combination of the cuckoo filter described above and a
 application that uses different algorithms to count the number of bits in an
@@ -737,9 +738,51 @@ the maximum number of threads our prototype implementation allows. We confirmed
 that all four threads are fairly serviced by the round robin scheduler and they
 correctly start and end.
 
+\subsection{Results}
+CRSA, CB, and CBB were ported from multithreaded applications to serial
+applications. Rather than using the scheduler to switch between tasks, the an
+application transitions to the first task of the successive application upon
+completion. The memory overhead of RSA and Bitcount when they are instrumented
+to run as a single thread with the additional overhead of the scheduler is shown
+to provide a reference for the baseline cost of the scheduler.
+Figure~\ref{fig:mem} shows the increase in code size with the switcht to the
+multithreading library. Approximately 3 lines or code in user space needed to be
+added to each of the multithreaded applications, but the library code is
+significant. The fraction of overhead ranges from 12.6\% for CB to nearly 30\%
+for bitcount.  
 
-Memory overhead (read off compilation)\\
-Performance (\# reboots)\\
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.99\columnwidth]{figs/memory}
+  \caption{{\bf Increase in code size}}
+  \label{fig:copy}
+\end{figure}
+
+We measure the performance of the application in terms of the number of reboots
+that occur before the application completes. This is an accurate measurement of
+performanc in intermittent systems because the majority of the execution time is
+spent recharging the capacitors. In our system set up, as shown in Figure
+~\ref{fig:setup}, the capacitor charging time is consistent at approximately 3.5
+seconds. We only report reboot data for CBB and CB because of the discrepancy in
+CRSA output between the multithreaded and serial versions.
+Figure~\ref{fig:reboots} shows that the scheduler has a significant cost to the
+system. The multithreaded executions incur significantly more reboots than the
+serial versions. This is to be expected due to the additional instructions of
+scheduler code and additional writes to non-volatile memory required to access
+the scheduler. 
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.99\columnwidth]{figs/setup}
+  \caption{{\bf Test setup using a Capybara board, and RF power source}}
+  \label{fig:setup}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.99\columnwidth]{figs/reboots}
+  \caption{{\bf Number of reboots per execution}}
+  \label{fig:reboots}
+\end{figure}
 
 
 \section{Future Work}
