@@ -81,17 +81,16 @@ execution model} where regular reboots due to an energy charge cycle necessitate
 of a program into small idempotent \textit{tasks}. However, current applications for
 intermittently powered devices are small and generally contain little functionality.
 
-In this paper we introduce the \textit{Threaded Application Programming on Intermittent Resources} 
-(TAPIR) model to expand the current intermittent programming model \textit{Chain} to 
-include general multiprogramming. TAPIR allows the range of possible programs for 
+In this paper we introduce the \textit{Threaded Application Programming on Intermittent Resources}
+(TAPIR) model to expand the current intermittent programming model \textit{Chain} to
+include general multiprogramming. TAPIR allows the range of possible programs for
 intermittent devices to include more general computation functionality while leaving the
-memory and energy overhead low enough that intermittent computation on those workloads 
+memory and energy overhead low enough that intermittent computation on those workloads
 still guarantees forward progress. While nonvolatile memory usage will increase per thread
 scheduled, certain optimizations are possible to reduce memory overhead overall. Additionally,
 context switching through our scheduler task is a low-instruction count static overhead that is
 easily accounted for in energy calculations. Through the design of TAPIR we show that general
 purpose threaded applications are feasible on an intermittently powered device.
- 
 \end{abstract}
 
 
@@ -524,33 +523,6 @@ prohibitively costly in most applications \cite{Aware}.
 
 \section{Implementation}
 \subsection{Scheduler}
-\begin{figure*}
-\begin{minipage}[b]{.48\textwidth}
-\begin{lstlisting}[language=C]
-    typedef struct thread_t {
-        unsigned thread_id;
-        context_t context;
-    } thread_t;
-
-    typedef struct thread_state_t {
-        thread_t thread;
-        unsigned active;
-    } thread_state_t;
-
-    // Array of running threads
-    thread_state_t threads[MAX_NUM_THREADS];
-
-    // List of free indicies in threads[]
-    unsigned free_indicies[MAX_NUM_THREADS];
-    unsigned free_indicies_size;
-
-    // Index of current running thread
-    // Stored in self channel
-    unsigned current;
-\end{lstlisting}
-\caption{Scheduler Data Structures}\label{schDataStruct}
-\end{minipage}\hfill
-\end{figure*}
 
 The data structures for our scheduler are listed in figure \ref{schDataStruct}.
 Like the rest of chain, memory for data structures is allocated at compile
@@ -583,6 +555,33 @@ wouldn't see the update to the variable. Since \texttt{current} is always
 initialized to the same value (0), we opt for manually swapping the buffer on
 \texttt{current} so that other threads can see the update.
 
+\begin{figure}[ht]
+\begin{minipage}[b]{.9\columnwidth}
+\begin{lstlisting}[language=C]
+    typedef struct thread_t {
+        unsigned thread_id;
+        context_t context;
+    } thread_t;
+
+    typedef struct thread_state_t {
+        thread_t thread;
+        unsigned active;
+    } thread_state_t;
+
+    // Array of running threads
+    thread_state_t threads[MAX_NUM_THREADS];
+
+    // List of free indicies in threads[]
+    unsigned free_indicies[MAX_NUM_THREADS];
+    unsigned free_indicies_size;
+
+    // Index of current running thread
+    // Stored in self channel
+    unsigned current;
+\end{lstlisting}
+\caption{Scheduler Data Structures}\label{schDataStruct}
+\end{minipage}
+\end{figure}
 
 We keep an unsigned integer, \texttt{curr\_free\_index}, in volatile memory,
 zeroed on every reboot, that acts as a current pointer in
