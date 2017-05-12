@@ -12,6 +12,35 @@
 \usepackage[export]{adjustbox}
 \usepackage{wrapfig}
 \newcommand{\chain}{Chain\xspace}
+
+\usepackage{color}
+
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\footnotesize,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=b,
+    keepspaces=true,
+    numbers=none,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=4
+    }
+    \lstset{style=mystyle}
+
+
 \numberofauthors{3}
 
 %\author{
@@ -45,7 +74,24 @@
 
 %Only including an abstract since it looks like the submission site wants one...
 \begin{abstract}
-Killer abstract.
+The growth of research in IoT related wireless technologies and low-power computing
+has led to the new area of \textit{energy-harvesting computation} on \textit{intermittently
+powered devices}. Intermittently powered devices are governed by the \textit{intermittent
+execution model} where regular reboots due to an energy charge cycle necessitate division
+of a program into small idempotent \textit{tasks}. However, current applications for
+intermittently powered devices are small and generally contain little functionality.
+
+In this paper we introduce the \textit{Threaded Application Programming on Intermittent Resources} 
+(TAPIR) model to expand the current intermittent programming model \textit{Chain} to 
+include general multiprogramming. TAPIR allows the range of possible programs for 
+intermittent devices to include more general computation functionality while leaving the
+memory and energy overhead low enough that intermittent computation on those workloads 
+still guarantees forward progress. While nonvolatile memory usage will increase per thread
+scheduled, certain optimizations are possible to reduce memory overhead overall. Additionally,
+context switching through our scheduler task is a low-instruction count static overhead that is
+easily accounted for in energy calculations. Through the design of TAPIR we show that general
+purpose threaded applications are feasible on an intermittently powered device.
+ 
 \end{abstract}
 
 
@@ -129,7 +175,7 @@ at the user level still successfully complete work on an intermittent device.
 
 
 
-\section{Related Work} 
+\section{Related Work}
 In addition to the division of a program into tasks, as described above, prior work
 explores several different strategies for preserving state across reboots. The approaches
 range from fully independent of the programmer~\cite{ratchet, dewdrop} at one extreme, to programmer
@@ -138,10 +184,10 @@ method used in ~\cite{Mementos} allow the programmer to specify high level behav
 checkpointing system. A key similarity among the prior work is it
 does not lend itself well to multi-programming let
 alone multi-threading. In fact, many of these works state the assumption that the device
-hardware cannot support a conventional OS, and thus focus on single threaded programs. 
+hardware cannot support a conventional OS, and thus focus on single threaded programs.
 Despite the availability of (relatively) inexpensive nonvolatile memory technology such as
 FRAM~\cite{quickrecall}, the the energy and storage overhead of checkpointing multiple
-thread states would limit the maximum per-thread checkpoint size. 
+thread states would limit the maximum per-thread checkpoint size.
 
 Furthermore, if a multiprogrammed application were implemented using previous
 checkpointing strategies, reasoning about thread interleavings becomes  difficult to
@@ -152,7 +198,7 @@ even more difficult to program. Particularly in systems like ~\cite{Dino} where 
 programmer is responsible for placing task boundaries, there is a risk that programmers
 will either overuse task boundaries in an effort to preserve any given thread's state, or
 underprovision task boundaries such that progress is never made because of context
-switching that dynamically expands the number of instructions between task boundaries. 
+switching that dynamically expands the number of instructions between task boundaries.
 
 While prior work has stopped short of suggesting an operating system for intermittently
 powered devices, a number of different works touch on the need for these devices to
@@ -168,9 +214,8 @@ a single peripheral. However, federating energy does not help a programmer descr
 handle {\em multiple} peripherals. Consider a listing in
 ~\cite{ufop} reporoduced in Figure ~\ref{fig:copy}, and imagine the level of understanding
 of the hardware behavior a programmer would have to employ to, say, read one sensor if it
-is available but read from and proceed to process data from a different sensor if it is not. 
+is available but read from and proceed to process data from a different sensor if it is not.
 
-% Doesn't compile, commenting out
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.99\columnwidth]{figs/listing}
@@ -189,7 +234,7 @@ multithreading" such that events can trigger a context switch, but multithreadin
 be timer based~\cite{contiki}. The goal of multitasking interfaces in wireless sensor
 networks is to provide a tradeoff between network lifetime and quality of service. This
 differs from the intermittent programming model where the challenge is not system
-lifetime, but system functionality based on energy availability. 
+lifetime, but system functionality based on energy availability.
 
 \section{Chain Discussion}
 \chain, while providing a reasonable interface for programmers to work within,
@@ -238,9 +283,7 @@ and since it solves the issue of idempotent data accesses in a way that is
 abstracted from the programmer.
 
 
-\section{System Implementation } % TODO change title
-Mutexes - Emily\\
-
+\section{System Implementation}
 TAPIR has a round robin scheduling algorithm. At the end of a task, the compiler
 inserts a jump back to the scheduler task, where the next task in the list is
 the one to be executed. An alternate scheduling model that was considered was
@@ -250,30 +293,41 @@ case, there is a high chance of reducing or halting forward progress altogether
 because one thread holds a lock that all of the other threads need but cannot
 complete. For that reason the design specifies end of task, so each task has
 an opportunity to use a shared resource and release any locks before a power-
-intensive context switch occurs. Additionally, a round robin scheduler was 
+intensive context switch occurs. Additionally, a round robin scheduler was
 chosen for this design because it is simple to implement and uses only one index counter,
-very little power or memory overhead as compared to other scheduling algorithms. It is 
+very little power or memory overhead as compared to other scheduling algorithms. It is
 critical for multithreading in Chain to not add significant power and memory
 overhead in scheduling over conventional Chain so that the workload can
-make as much forward progress as possible on one charge cycle.
+make as much forward progress as possible on one charge cycle. While out of
+scope for this project, future work may include a priority scheduler to decrease
+latency for certain threads due to context switching for I/O or other input latency
+sensive workloads.
 
-When designing threading in Chain, the shared memory model is a main indicator 
-of the threaded execution model. The two most probable options when designing 
-TAPIR were a SIMD execution model of \textit{Thread Pools}, or a MIMD 
-traditional multiprogramming model. The Thread Pool design makes use of task 
-code duplication by explicitly forking a number of chain programs, all of which 
-run simultaneously on the scheduler on arrayed data. This option is useful 
-multiple data streams from I/O in embedded applications that need to be 
-processed before new data overrides the I/O device. Additionally, the Thread 
-Pool model makes sharing memory more regular by using multiple copies of the 
-same thread. However, this option is not as general purpose. The TAPIR design 
-ultimately settled on a multiprogramming model, because this allows for the 
-programmer to explictly program unique chain programs with shared or discrete 
+When designing threading in Chain, the shared memory model is a main indicator
+of the threaded execution model. The two most probable options when designing
+TAPIR were a SIMD execution model of \textit{Thread Pools}, or a MIMD
+traditional multiprogramming model. The Thread Pool design makes use of task
+code duplication by explicitly forking a number of chain programs, all of which
+run simultaneously on the scheduler on arrayed data. This option is useful
+multiple data streams from I/O in embedded applications that need to be
+processed before new data overrides the I/O device. Additionally, the Thread
+Pool model makes sharing memory more regular by using multiple copies of the
+same thread. However, this option is not as general purpose. The TAPIR design
+ultimately settled on a multiprogramming model, because this allows for the
+programmer to explictly program unique chain programs with shared or discrete
 data structures on the same system. However, this execution model requires a
-more structured locking mechanism to avoid RMW during execution. 
+more structured locking mechanism to avoid RMW during execution.
 
-SIMD w/ channels (you don't get your own registers...etc -
-    just channels, since intermittent)\\
+SIMD execution on an intermittent system relies on nonvolatile memory instead
+of independent registers for each thread. In Chain's case the implementation
+would rely on channels for each thread running in the system. In the MIMD
+execution model channels could potentially be re-assigned to already allocated
+channels because the threads may end at interleaving times. However, in the
+SIMD model it is expected that each identical thread is at a comperable point
+in execution to the other running threads, and so each thread that may be
+run necessitates a new channel allocation. This could lead to an unavoidable
+hard limit on the number of threads that can run in an applicatioin which in
+turn limits potential applications that are useful on this intermittent device.
 
 
 \subsection{Scheduler}
@@ -307,7 +361,8 @@ maintain programmability by provide the user with an interface that they
 expect, instead of trying to extend a \chain semantic like
 \texttt{TRANSITION\_TO} to also include thread creation.
 
-\subsection{Locking Primitive} 
+
+\subsection{Locking Primitive}
 To improve a programmer's control of shared data between threads, and to reduce
 the complexity of accessing data that may be touched by many different tasks we
 implement a simple mutex object that can be added to a channel. The mutex is
@@ -324,10 +379,11 @@ held}. This scheme guarantees correctness because if a failure occurs after the
 mutex is set but before the task commits, the task will read out the id of the
 mutex holder before checking if it is free. Upon matchint its id with the holder
 id, the task will proceed regardless of the fact that \texttt{status = held}.
-%Maybe add a figure here to make the sequence of read/write/failure clearer... 
+%TODO Maybe add a figure here to make the sequence of read/write/failure clearer...
 Further, a task must finsih executing before switching to another thread, so
 there is no possiblity for an external thread to see a value that was not
-committed by another task. 
+committed by another task.
+
 
 It is important to note that the mutex object can be modified idempotently, but
 accesses to the data in the same channel as the mutex must adhere to channel
@@ -342,7 +398,8 @@ present we believe that the \texttt{mutex} and \texttt{shared\_channel}
 interface is easier for programmers to use than \texttt{multicast\_channels}, or
 a sepcialized double buffered channel when passing data between threads. It
 maintains familiar semantics for programmers and does not incur the memory
-overhead of double buffering. 
+overhead of double buffering.
+
 
 \subsection{Interrupts}
 \subsubsection{Motivation}
@@ -392,7 +449,7 @@ application.\\
 
 \begin{figure*}
 \begin{minipage}[b]{1.0\textwidth}
-\begin{lstlisting}
+\begin{lstlisting}[language=C]
     /** Enable interrupts if int_setup_complete() has been called
       * and execution is not inside an interrupt handler */
     void enable_interrupts();
@@ -451,8 +508,8 @@ expected behavior - on continuously powered systems, execution generally
 returns to the instruction after the instruction that the system received an
 interrupt while processing. The continuous system model is intuitive, but
 breaks under \chain's intermittence. Task idempotence in \chain only works
-when execution returns to the top of a
-task upon power failure. Program state (registers and stack memory) are stored
+when execution returns to the top of a task upon power failure. Program state
+(registers and stack memory) are stored
 in volatile memory, if an interrupt handler returned to the middle of a task,
 it would be impossible to reason about program correctness, since none of the
 program state had been stored. The programmer could store program state on the
@@ -465,12 +522,162 @@ be to store program state in non-volatile, but this has been shown to be
 prohibitively costly in most applications \cite{Aware}.
 
 
-%\section{Implementation}
-%Scheduler Data structures and idempotence (what we broke and why) -NEIL\\
-%Mutexes (Simple, meant for pseudo channels) - Emily\\
-%Interrupts (mucked with IE flags) - Neil\\
-%% Interrupt prologue
-%% Interrupt setup
+\section{Implementation}
+\subsection{Scheduler}
+\begin{figure*}
+\begin{minipage}[b]{.48\textwidth}
+\begin{lstlisting}[language=C]
+    typedef struct thread_t {
+        unsigned thread_id;
+        context_t context;
+    } thread_t;
+
+    typedef struct thread_state_t {
+        thread_t thread;
+        unsigned active;
+    } thread_state_t;
+
+    // Array of running threads
+    thread_state_t threads[MAX_NUM_THREADS];
+
+    // List of free indicies in threads[]
+    unsigned free_indicies[MAX_NUM_THREADS];
+    unsigned free_indicies_size;
+
+    // Index of current running thread
+    // Stored in self channel
+    unsigned current;
+\end{lstlisting}
+\caption{Scheduler Data Structures}\label{schDataStruct}
+\end{minipage}\hfill
+\end{figure*}
+
+The data structures for our scheduler are listed in figure \ref{schDataStruct}.
+Like the rest of chain, memory for data structures is allocated at compile
+time. Thus, the limit on the maximum number of threads allowed in a system is
+fixed arbitrarily - not ideal, but there isn't a better option while operating
+inside chain. The \texttt{threads} array is stored in all-to-one channel, from
+every task to the scheduler task. The \texttt{free\_indicies} array is stored
+in a one-to-all channel, from the scheduler task to every task.
+
+
+Neither all-to-one nor one-to-all channels fit into standard \chain channel
+semantics, although they resemble multicast-in and multicast-out channels
+described in the original \chain paper. We eschew the notion that channels
+have fixed start and end points and instead treat the channel as a general
+location in non-volatile memory that can be read from and written to by
+arbitrary tasks. However, accesses to these channels are encapsulated by our
+library, so the programmer has no need to think about idempotency violations.
+
+
+With these multicast channels, the scheduler task can act as a buffer between
+multiple threads - arbitrary tasks write \texttt{threads[]} with calls to
+\texttt{thread\_create} and \texttt{thread\_end} and tasks read from
+\texttt{free\_indicies} through calls to thread create, maintaining
+idempotency. Inside the scheduler task, we read and write \texttt{current},
+so \texttt{current} is double buffered. The only issue is with
+\texttt{thread\_init} since it is called from user-defined tasks and
+initializes \texttt{current} - the same task that called \texttt{thread\_init}
+could call \texttt{thread\_create}, and the \texttt{thread\_create} call
+wouldn't see the update to the variable. Since \texttt{current} is always
+initialized to the same value (0), we opt for manually swapping the buffer on
+\texttt{current} so that other threads can see the update.
+
+
+We keep an unsigned integer, \texttt{curr\_free\_index}, in volatile memory,
+zeroed on every reboot, that acts as a current pointer in
+\texttt{free\_indicies[]}. Every time the scheduler task runs,
+\texttt{free\_indicies[]} is updated with the state of \texttt{threads[]},
+based on whether or not the active bit is set for a given index. When
+\texttt{thread\_create} is called, if \texttt{curr\_free\_index} is greater
+than \texttt{free\_indicies\_size}, then \texttt{thread\_create} will fail in
+POSIX fashion - the system does not have enough resources to support another
+thread. Otherwise, \texttt{threads[free\_indicies[curr\_free\_index]]} is set
+to the new thread. Upon power failure, \texttt{curr\_free\_index} is reset to
+zero, so as long as the rest of the operations in the task are idempotent, so
+will \texttt{thread\_create} calls - the same locations in \texttt{theads[]}
+will be overwritten.
+
+% TODO picture of array?
+
+
+\subsection{Interrupts}
+The primary issue with interrupts is the interrupt enable flags. The MSP430,
+like many other embedded arhitetures has a master interrupt enable,
+as well as specific, device-level interrupt enables. Both are the user's
+responsibility, and need to be specified in the user-defined
+\texttt{INIT\_FUNC}, as both will be cleared on reset. When an interrupt fires,
+however, interrupts will be disabled by the CPU (again, on most architectures)
+and if the device loses power immediately after an interrupt occurs, there will
+be no record that the interrupt occured. This case is unaviodable on
+intermittent power without explicit support from the power system - we reason
+that if the user cared about every interrupt that fired and if missing one
+interrupt would be catestrophic to the device's operation, then, arguably, that
+device should not be intermittently powered.
+
+
+Beyond this, there remains the issue of how to return to the interrupt task
+with the interrupt enable set to the correct value if a power failure occurs.
+Since interrupts are disabled on boot (on the MSP430, for instance), the user
+needs to add code to their \texttt{INIT\_FUNC} to enable interrupts. However,
+since interrupt handlers are assumed to be non-reentrant on our system, if
+we are inside an interrupt handler, we need to keep interrupts disabled. We
+also need to write the address of the task that we should return to upon boot -
+the address of the \texttt{INTERRUPT\_TASK} on our system. If these are two
+separate variables, there is a correctness issue with respect to power
+failures. If we write the location of the \texttt{INTERRUPT\_TASK}, but die
+before we can write the fact that we are in an interrupt handler, we will
+return to te interrupt handler with interrupts enabled (since they will be
+enabled by the \texttt{INIT\_TASK}. If we reverse the order and write the fact
+that we are in an interrupt handler, then die before we can write the address
+of the \texttt{INTERRUPT\_TASK}, we will resume execution at a non-interrupt
+task with interrupts disabled, since the \texttt{INIT\_TASK} will not re-enable
+them. Both of these cases could cause execution to fail; the former fails if
+the interrupt handler is not written to be reentrant, the latter fails since
+interrupts will never be processed. Thus, these writes need to be atomic.
+
+
+We could depend on the programmer to designate all tasks that would be run as
+part of the interrupt handler, then use whether the current task address was
+equivalent to one of those as the flag that designates that we are in an
+interrupt handler, but this forces tasks to either be used as a part of the
+interrupt handler or not, which is bad for code reuse. This also prevents the
+user from being able to spawn off non-interrupt tasks as part of an interrupt
+handler.
+
+
+Instead, we exploit the fact that, generally, architectures are byte-aligned
+with a fixed instruction size of 16 bits or more - this means, at the very
+least, the lowest bit of any code address is zero. As this is true of ARM,
+RISC-V, MSP430, and most RISC architecutres, we feel that this is a reasonable
+assumption. We use this fact to store the flag that is set if execution is
+inside an interrupt handler in the lowest bit of the address of the task that
+we are currently executing (the task that execution will return to upon
+reboot). Thus, we can use a single write to encode all the needed information,
+giving atomicity. For simplicity for the programmer, upon an interrupt firing,
+an \texttt{interrupt\_prologue()} is run that does this write. The address stored
+in the current context is still the address of the user-defined
+\texttt{INTERRUPT\_TASK}. In our model, this write is the guarentuee that the
+system has recieved the interrupt - if power fails between when the interrupt
+fires and this write occurs, the interrupt will be ignored. This could be fixed
+by having a special capacitor in the power system to accomidate the write, but
+assumptions about the power system, arguably, should not be a part of \chain.
+
+
+To avoid the pathological stack corruption case described in the motivation for
+interrupts, we keep a flag in non-volatile memory that is set if a reboot has
+occured while in an interrupt handler and is unset otherwise. This flag is
+unset in the afformentioned \texttt{interrupt\_prologue()} and set in
+\texttt{main()}. If and only if the flag is unset when
+\texttt{return\_from\_interrupt()} is called, the two values pushed on the
+stack from an interrupt firing are popped off. Otherwise the stack remains
+unchanged, since the values will have been effectively cleared by a power
+failure.
+
+
+As of this writing, interrupts are still being debugged, but the above
+reasoning seems, in theory, correct.
+% TODO Mutexes (Simple, meant for pseudo channels) - Emily\\
 
 
 \section{Evaluation}
@@ -483,7 +690,8 @@ because was simpler to guarantee the isolation of the MCU from the programming
 fet than on the launchpad. We did not seekt to fully verify our implementation
 of multi-threading, but we use our experience in application development to
 support our claim that the threads behave correctly, and as a programmer would
-expect. 
+expect.
+
 \subsection{Applications}
 \subsubsection{Blinker (B)}
 This application was built on top of the app-blinker-chain
@@ -492,7 +700,7 @@ that it just passes data through three tasks until a maximum count is reached,
 and then the thread terminates. This app was primarily used to demonstrate the
 initial functionality of the system, and then to test mutexes. In both cases a
 combination of \texttt{LOG} statements and final output values were used to
-confirm the correct operation of the system. 
+confirm the correct operation of the system.
 \subsubsection{Cuckoo-RSA (CRSA)}
 This application is a combination of a cuckoo filter that inserts and queries 64
 values a Bloom filter-like data structure~\cite{Chain}, and RSA encryption of message
@@ -504,7 +712,7 @@ merged, and we were unable to fix the problem. Unit tests running the RSA
 application in single threaded mode through our scheduler and using our
 multi-threading library produce the correct result, but any combination of RSA
 and cuckoo filtering produces the incorrect result. However, RSA does run to
-completion, so we believe the results from C-RSA are still useful. 
+completion, so we believe the results from C-RSA are still useful.
 \subsubsection{Cuckoo-Bitcount (CB)}
 This application is a combination of the cuckoo filter described above and a
 application that uses different algorithms to count the number of bits in an
@@ -517,7 +725,7 @@ CBB combines the cuckoo filter and bit count applications with two threads of
 the blinker application. This results in four active threads at once, which is
 the maximum number of threads our prototype implementation allows. We confirmed
 that all four threads are fairly serviced by the round robin scheduler and they
-correctly start and end. 
+correctly start and end.
 
 
 Memory overhead (read off compilation)\\
@@ -569,7 +777,21 @@ re-assignation can be determined at compile-time, the overhead during runtime
 will still remain low.
 
 \section{Conclusion}
-Multithreading in intermittence {\em is} a good idea!
+The increased prevalence of IoT devices necessitates an increased ability to
+run larger, general purpose applications on devices with smaller memory and
+energy footprints. With the increased research on intermittently powered devices
+for use in the embedded sphere, it is a logical next step to explore the use
+of general purpose threaded code on an intermittent device. We have shown
+through the design and implementation of TAPIR on top of the Chain intermittent
+programming model that adding functionality for multiprogramming with
+multithreaded applications can have a low enough memory and power overhead to be
+considered useful on such a device. Additionally, we have implemented a safe
+locking structure for use in nonvolatile memory for such applications that
+maintains RMW restrictions in the intermittent execution model and allows
+for larger shared data structures without the overhead of memory duplication
+that may overcrowd a small device. We have shown with this design that threaded
+applications can be programmed in a familiar way to software designers and that
+it is a viable next step in intermittent device research.
 
 \begin{figure}[hb]
   \centering
