@@ -121,7 +121,7 @@ programming model is needed.
 Our multithreaded model is build on two existing programming models, DINO and
 Chain.  An initial intermittent programming model DINO breaks intermittent
 programs into tasks, which creates automatic checkpointing locations during
-exeuction \cite{Dino}. DINO uses a checkpointing and recovery model that tracks
+execution \cite{Dino}. DINO uses a checkpointing and recovery model that tracks
 both volatile and nonvolatile memory.  The DINO execution model executes all
 tasks transactionally, leading to atomic task semantics and does not permit
 consistency violations in nonvolatile state \cite{Dino}. Chain, a more recent
@@ -185,7 +185,7 @@ does not lend itself well to multi-programming let
 alone multi-threading. In fact, many of these works state the assumption that the device
 hardware cannot support a conventional OS, and thus focus on single threaded programs.
 Despite the availability of (relatively) inexpensive nonvolatile memory technology such as
-FRAM~\cite{quickrecall}, the the energy and storage overhead of checkpointing multiple
+FRAM~\cite{quickrecall}, the energy and storage overhead of checkpointing multiple
 thread states would limit the maximum per-thread checkpoint size.
 
 Furthermore, if a multiprogrammed application were implemented using previous
@@ -204,14 +204,14 @@ powered devices, a number of different works touch on the need for these devices
 perform multiple tasks in the same workload. Buettner, Greenstein and Wetherall motivate
 their runtime, Dewdrop, based on difference in energy requirements for the tasks that a
 CRFID needs to perform~\cite{dewdrop}. The energy aware memory mapping in ~\cite{Aware}
-discusses the challenge of handling nondeterministic interrupts received by intermittent
+discusses the challenge of handling non-deterministic interrupts received by intermittent
 sensing platforms when a peripheral must be serviced immediately and control flow deviates
 from single threaded execution. From a hardware standpoint, the federated energy scheme in
 ~\cite{ufop} provides a platform for removing the energy dependence between an MCU and its
 peripherals. Federated energy also simplifies a programmer's reasoning about reading from
 a single peripheral. However, federating energy does not help a programmer describe how to
 handle {\em multiple} peripherals. Consider a listing in
-~\cite{ufop} reporoduced in Figure ~\ref{fig:copy}, and imagine the level of understanding
+~\cite{ufop} reproduced in Figure ~\ref{fig:copy}, and imagine the level of understanding
 of the hardware behavior a programmer would have to employ to, say, read one sensor if it
 is available but read from and proceed to process data from a different sensor if it is not.
 
@@ -228,7 +228,7 @@ timer and event driven context switching as well as a simple programming interfa
 TinyOS uses a simple FIFO scheduler to handle event based context switches~\cite{tiny}.
 Nano-RK implements priority based preemptive multitasking where task priorities are
 statically defined~\cite{nano}. Contiki uses proto-theads, stackless program threads, to
-offer a model between nano-RK and tinyOS. The Contiki implements "cooperative
+offer a model between Nano-RK and tinyOS. The Contiki implements "cooperative
 multithreading" such that events can trigger a context switch, but multithreading may also
 be timer based~\cite{contiki}. The goal of multitasking interfaces in wireless sensor
 networks is to provide a tradeoff between network lifetime and quality of service. This
@@ -300,7 +300,7 @@ overhead in scheduling over conventional Chain so that the workload can
 make as much forward progress as possible on one charge cycle. While out of
 scope for this project, future work may include a priority scheduler to decrease
 latency for certain threads due to context switching for I/O or other input latency
-sensive workloads.
+sensitive workloads.
 
 When designing threading in Chain, the shared memory model is a main indicator
 of the threaded execution model. The two most probable options when designing
@@ -313,7 +313,7 @@ processed before new data overrides the I/O device. Additionally, the Thread
 Pool model makes sharing memory more regular by using multiple copies of the
 same thread. However, this option is not as general purpose. The TAPIR design
 ultimately settled on a multiprogramming model, because this allows for the
-programmer to explictly program unique chain programs with shared or discrete
+programmer to explicitly program unique chain programs with shared or discrete
 data structures on the same system. However, this execution model requires a
 more structured locking mechanism to avoid RMW during execution.
 
@@ -322,10 +322,10 @@ of independent registers for each thread. In Chain's case the implementation
 would rely on channels for each thread running in the system. In the MIMD
 execution model channels could potentially be re-assigned to already allocated
 channels because the threads may end at interleaving times. However, in the
-SIMD model it is expected that each identical thread is at a comperable point
+SIMD model it is expected that each identical thread is at a comparable point
 in execution to the other running threads, and so each thread that may be
 run necessitates a new channel allocation. This could lead to an unavoidable
-hard limit on the number of threads that can run in an applicatioin which in
+hard limit on the number of threads that can run in an application which in
 turn limits potential applications that are useful on this intermittent device.
 
 
@@ -376,11 +376,11 @@ function fails. Upon successfully acquiring the lock, a thread writes its id to
 the mutex's holder id, and changes the \texttt{free} bit to \texttt{status =
 held}. This scheme guarantees correctness because if a failure occurs after the
 mutex is set but before the task commits, the task will read out the id of the
-mutex holder before checking if it is free. Upon matchint its id with the holder
+mutex holder before checking if it is free. Upon matching its id with the holder
 id, the task will proceed regardless of the fact that \texttt{status = held}.
 %TODO Maybe add a figure here to make the sequence of read/write/failure clearer...
-Further, a task must finsih executing before switching to another thread, so
-there is no possiblity for an external thread to see a value that was not
+Further, a task must finish executing before switching to another thread, so
+there is no possibility for an external thread to see a value that was not
 committed by another task.
 
 
@@ -395,7 +395,7 @@ the future, a compiler could be used to guarantee that a
 \texttt{shared\_channel} is not read and written by the same task, but at
 present we believe that the \texttt{mutex} and \texttt{shared\_channel}
 interface is easier for programmers to use than \texttt{multicast\_channels}, or
-a sepcialized double buffered channel when passing data between threads. It
+a specialized double buffered channel when passing data between threads. It
 maintains familiar semantics for programmers and does not incur the memory
 overhead of double buffering.
 
@@ -535,7 +535,7 @@ Like the rest of chain, memory for data structures is allocated at compile
 time. Thus, the limit on the maximum number of threads allowed in a system is
 fixed arbitrarily - not ideal, but there isn't a better option while operating
 inside chain. The \texttt{threads} array is stored in all-to-one channel, from
-every task to the scheduler task. The \texttt{free\_indicies} array is stored
+every task to the scheduler task. The \texttt{free\_indices} array is stored
 in a one-to-all channel, from the scheduler task to every task.
 
 
@@ -551,7 +551,7 @@ library, so the programmer has no need to think about idempotency violations.
 With these multicast channels, the scheduler task can act as a buffer between
 multiple threads - arbitrary tasks write \texttt{threads[]} with calls to
 \texttt{thread\_create} and \texttt{thread\_end} and tasks read from
-\texttt{free\_indicies} through calls to thread create, maintaining
+\texttt{free\_indices} through calls to thread create, maintaining
 idempotency. Inside the scheduler task, we read and write \texttt{current},
 so \texttt{current} is double buffered. The only issue is with
 \texttt{thread\_init} since it is called from user-defined tasks and
@@ -577,9 +577,9 @@ initialized to the same value (0), we opt for manually swapping the buffer on
     // Array of running threads
     thread_state_t threads[MAX_NUM_THREADS];
 
-    // List of free indicies in threads[]
-    unsigned free_indicies[MAX_NUM_THREADS];
-    unsigned free_indicies_size;
+    // List of free indices in threads[]
+    unsigned free_indices[MAX_NUM_THREADS];
+    unsigned free_indices_size;
 
     // Index of current running thread
     // Stored in self channel
@@ -591,16 +591,16 @@ initialized to the same value (0), we opt for manually swapping the buffer on
 
 We keep an unsigned integer, \texttt{curr\_free\_index}, in volatile memory,
 zeroed on every reboot, that acts as a current pointer in
-\texttt{free\_indicies[]}. Every time the scheduler task runs,
-\texttt{free\_indicies[]} is updated with the state of \texttt{threads[]},
+\texttt{free\_indices[]}. Every time the scheduler task runs,
+\texttt{free\_indices[]} is updated with the state of \texttt{threads[]},
 based on whether or not the active bit is set for a given index. When
 \texttt{thread\_create} is called, if \texttt{curr\_free\_index} is greater
-than \texttt{free\_indicies\_size}, then \texttt{thread\_create} will fail in
+than \texttt{free\_indices\_size}, then \texttt{thread\_create} will fail in
 POSIX fashion - the system does not have enough resources to support another
-thread. Otherwise, \texttt{threads[free\_indicies[curr\_free\_index]]} is set
+thread. Otherwise, \texttt{threads[free\_indices[curr\_free\_index]]} is set
 to the new thread. Upon power failure, \texttt{curr\_free\_index} is reset to
 zero, so as long as the rest of the operations in the task are idempotent, so
-will \texttt{thread\_create} calls - the same locations in \texttt{theads[]}
+will \texttt{thread\_create} calls - the same locations in \texttt{threads[]}
 will be overwritten.
 
 \begin{figure}[ht]
@@ -613,16 +613,16 @@ will be overwritten.
 
 \subsection{Interrupts}
 The primary issue with interrupts is the interrupt enable flags. The MSP430,
-like many other embedded arhitetures has a master interrupt enable,
+like many other embedded architectures has a master interrupt enable,
 as well as specific, device-level interrupt enables. Both are the user's
 responsibility, and need to be specified in the user-defined
 \texttt{INIT\_FUNC}, as both will be cleared on reset. When an interrupt fires,
 however, interrupts will be disabled by the CPU (again, on most architectures)
 and if the device loses power immediately after an interrupt occurs, there will
-be no record that the interrupt occured. This case is unaviodable on
+be no record that the interrupt occurred. This case is unavoidable on
 intermittent power without explicit support from the power system - we reason
 that if the user cared about every interrupt that fired and if missing one
-interrupt would be catestrophic to the device's operation, then, arguably, that
+interrupt would be catastrophic to the device's operation, then, arguably, that
 device should not be intermittently powered.
 
 
@@ -637,7 +637,7 @@ the address of the \texttt{INTERRUPT\_TASK} on our system. If these are two
 separate variables, there is a correctness issue with respect to power
 failures. If we write the location of the \texttt{INTERRUPT\_TASK}, but die
 before we can write the fact that we are in an interrupt handler, we will
-return to te interrupt handler with interrupts enabled (since they will be
+return to the interrupt handler with interrupts enabled (since they will be
 enabled by the \texttt{INIT\_TASK}. If we reverse the order and write the fact
 that we are in an interrupt handler, then die before we can write the address
 of the \texttt{INTERRUPT\_TASK}, we will resume execution at a non-interrupt
@@ -659,7 +659,7 @@ handler.
 Instead, we exploit the fact that, generally, architectures are byte-aligned
 with a fixed instruction size of 16 bits or more - this means, at the very
 least, the lowest bit of any code address is zero. As this is true of ARM,
-RISC-V, MSP430, and most RISC architecutres, we feel that this is a reasonable
+RISC-V, MSP430, and most RISC architectures, we feel that this is a reasonable
 assumption. We use this fact to store the flag that is set if execution is
 inside an interrupt handler in the lowest bit of the address of the task that
 we are currently executing (the task that execution will return to upon
@@ -667,17 +667,17 @@ reboot). Thus, we can use a single write to encode all the needed information,
 giving atomicity. For simplicity for the programmer, upon an interrupt firing,
 an \texttt{interrupt\_prologue()} is run that does this write. The address stored
 in the current context is still the address of the user-defined
-\texttt{INTERRUPT\_TASK}. In our model, this write is the guarentuee that the
-system has recieved the interrupt - if power fails between when the interrupt
+\texttt{INTERRUPT\_TASK}. In our model, this write is the guarantee that the
+system has received the interrupt - if power fails between when the interrupt
 fires and this write occurs, the interrupt will be ignored. This could be fixed
-by having a special capacitor in the power system to accomidate the write, but
+by having a special capacitor in the power system to accommodate the write, but
 assumptions about the power system, arguably, should not be a part of \chain.
 
 
 To avoid the pathological stack corruption case described in the motivation for
 interrupts, we keep a flag in non-volatile memory that is set if a reboot has
-occured while in an interrupt handler and is unset otherwise. This flag is
-unset in the afformentioned \texttt{interrupt\_prologue()} and set in
+occurred while in an interrupt handler and is unset otherwise. This flag is
+unset in the aforementioned \texttt{interrupt\_prologue()} and set in
 \texttt{main()}. If and only if the flag is unset when
 \texttt{return\_from\_interrupt()} is called, the two values pushed on the
 stack from an interrupt firing are popped off. Otherwise the stack remains
@@ -693,11 +693,11 @@ reasoning seems, in theory, correct.
 \section{Evaluation}
 To test our multithreading library and mutex implementation, we instrumented
 several existing Chain applications that do not share any tasks or channels to
-run concurrently. The programs were run on either an msp430fr5969 launchpad or
+run concurrently. The programs were run on either an MSP430FR5949 launchpad or
 on a Capybara sensing node, a custom intermittent development board with an
-msp430fr5949 MCU. Reboot tests were carried out strictly on the Capybara board
+MSP430FR5949 MCU. Reboot tests were carried out strictly on the Capybara board
 because was simpler to guarantee the isolation of the MCU from the programming
-fet than on the launchpad. We did not seekt to fully verify our implementation
+FET than on the launchpad. We did not seek to fully verify our implementation
 of multi-threading, but we use our experience in application development to
 support our claim that the threads behave correctly, and as a programmer would
 expect.
