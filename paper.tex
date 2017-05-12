@@ -489,6 +489,12 @@ that interrupt handlers that take too long will not complete than
 to violate the standard paradigm, since the former arbitrarily restricts
 the application domain.
 
+\begin{figure}[ht]
+\begin{minipage}[b]{.9\columnwidth}
+  \includegraphics[width=0.7\columnwidth]{figs/int_ctrl_flow}
+  \caption{Interrupt Control Flow}\label{intCtrlFlow}
+\end{minipage}
+\end{figure}
 
 For the sake of simplicity, we assume that interrupt handlers are not
 reentrant. Since reentrant handlers can be used in a non-reentrant fashion
@@ -597,7 +603,12 @@ zero, so as long as the rest of the operations in the task are idempotent, so
 will \texttt{thread\_create} calls - the same locations in \texttt{theads[]}
 will be overwritten.
 
-% TODO picture of array?
+\begin{figure}[ht]
+\begin{minipage}[b]{.9\columnwidth}
+  \includegraphics[width=0.7\columnwidth]{figs/threadsArray}
+  \caption{Threads Array}\label{threadsArray}
+\end{minipage}
+\end{figure}
 
 
 \subsection{Interrupts}
